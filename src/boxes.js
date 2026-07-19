@@ -66,8 +66,8 @@ class BoxText extends Box{
     ctx.fillStyle = barColor;
     ctx.fillRect(
       this.x+NUM.CHAR_GAP + offsetX + startChar*NUM.CHAR_WIDTH - extraStart,
-      this.y + lineI*NUM.LINE_HEIGHT + 2*NUM.CHAR_GAP
-        - Math.floor(NUM.CHAR_GAP/2) + this.offsetY,
+      this.y + lineI*NUM.LINE_HEIGHT + 2*NUM.CHAR_GAP -
+        Math.floor(NUM.CHAR_GAP/2) + this.offsetY,
       (endChar-startChar)*NUM.CHAR_WIDTH + extraStart+extraEnd,
       NUM.LINE_HEIGHT
     );
@@ -94,13 +94,22 @@ class BoxCode extends BoxText{
       let selectEnd = -1;
       let cursorPos = -1;
       if(select !== null){
-        if(select.range.isLineSelected(i) && this.lines.strGet(i)){
-          selectStart = select.range.lowerLineI >= i ?
-            select.range.lowerCharI : 0;
-          selectEnd = select.range.upperLineI <= i ?
-            select.range.upperCharI : this.lines.strLen(i);
-          // Draws bar under selected text
-          this.drawBar(COLOR.BAR.SELECTED, i, selectStart, selectEnd);
+        if(select.range.isLineSelected(i)){
+          if(this.lines.strGet(i)){
+            selectStart = select.range.lowerLineI >= i ?
+              select.range.lowerCharI : 0;
+            selectEnd = select.range.upperLineI <= i ?
+              select.range.upperCharI : this.lines.strLen(i);
+            // Draws bar under selected text
+            this.drawBar(COLOR.BAR.SELECTED, i, selectStart, selectEnd);
+          }
+          // Draw narrow line before start of string if full line selected
+          if(
+            (selectStart === -1 && selectEnd === -1) ||
+            (selectStart === 0 && selectEnd === this.lines.strLen(i))
+          ){
+            this.drawBar(COLOR.BAR.SELECTED, i, 0, 0, NUM.CHAR_GAP-1);
+          }
         }
         if(select.cursor.lineI === i && select.cursorBlink.isActive()){
           cursorPos = select.cursor.charI;

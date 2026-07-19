@@ -22,6 +22,19 @@ class StringList{
     return this.#lineStrs.length;
   }
 
+  linesGet(){
+    return this.#lineStrs;
+  }
+  linesSet(lines){
+    if(!Array.isArray(lines)) return;
+    if(lines.length > this.#maxLines) return;
+    for(let i=0; i<lines.length; i++){
+      if(typeof lines[i] !== "string") return;
+    }
+
+    this.#lineStrs = lines;
+  }
+  
   lineAdd(lineI){
     if(this.lineCount() >= this.#maxLines) return;
     this.#lineStrs.splice(lineI+1, 0, "");
