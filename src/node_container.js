@@ -170,6 +170,7 @@ class NodeContainer{
       if(cutStr === null) return;
       navigator.clipboard.writeText(cutStr)
         .catch(err => {
+          this.attemptPaste(cutStr);
           console.error('Failed to write clipboard contents: ', err);
         });
     }
@@ -228,12 +229,12 @@ class NodeContainer{
     if(!ALLOWED_CHARS.test(_char)) return;
 
     if(!this.select.range.isNull){
-      let afterDel = this.#delSelectionInfo();
+      let afterDel = this.#delSelectionInfo(this.codeLines);
       if(afterDel === null) return;
-      if(afterDel.lowerLineLen + 1 > NUM.NODE_WIDTH_MAIN) return;
+      if(afterDel.lowerLineLen >= this.codeLines.lineW) return;
 
-      this.delSelection();
-    }else if(this.codeLines.strLen(this.cursor.lineI) >= NUM.NODE_WIDTH_MAIN){
+      this.delSelection(this.codeLines);
+    }else if(this.codeLines.strLen(this.cursor.lineI) >= this.codeLines.lineW){
       return;
     }
 
@@ -244,12 +245,12 @@ class NodeContainer{
     if(this.select.nodeI === null) return;
 
     if(!this.select.range.isNull){
-      let afterDel = this.#delSelectionInfo();
+      let afterDel = this.#delSelectionInfo(this.codeLines);
 
       if(afterDel === null) return;
       if(afterDel.lineCount >= this.codeLines.maxLines) return;
 
-      this.delSelection();
+      this.delSelection(this.codeLines);
     }else if(this.codeLines.lineCount() >= this.codeLines.maxLines){
       return;
     }
@@ -271,7 +272,7 @@ class NodeContainer{
     if(this.select.nodeI === null) return;
 
     if(!this.select.range.isNull){
-      this.delSelection();
+      this.delSelection(this.codeLines);
     }else if(this.cursor.charI > 0){
       this.codeLines.charDel(this.cursor.lineI, this.cursor.charI);
       this.cursor.charI -= 1;
@@ -279,7 +280,7 @@ class NodeContainer{
       if(
         this.codeLines.strLen(this.cursor.lineI-1) +
         this.codeLines.strLen(this.cursor.lineI) <=
-        NUM.NODE_WIDTH_MAIN
+        this.codeLines.lineW
       ){
         this.cursor.lineI -= 1;
         this.cursor.charI = this.codeLines.strLen(this.cursor.lineI);
@@ -297,14 +298,14 @@ class NodeContainer{
     if(this.select.nodeI === null) return;
 
     if(!this.select.range.isNull){
-      this.delSelection();
+      this.delSelection(this.codeLines);
     }else if(this.cursor.charI < this.codeLines.strLen(this.cursor.lineI)){
       this.codeLines.charDel(this.cursor.lineI, this.cursor.charI+1);
     }else if(this.cursor.lineI < this.codeLines.lineCount()-1){
       if(
         this.codeLines.strLen(this.cursor.lineI) +
         this.codeLines.strLen(this.cursor.lineI+1) <=
-        NUM.NODE_WIDTH_MAIN
+        this.codeLines.lineW
       ){
         let combinedStr =
           this.codeLines.strGet(this.cursor.lineI) +
@@ -315,34 +316,34 @@ class NodeContainer{
       }
     }
   }
-  delSelection(){
-    if(this.#delSelectionInfo() === null) return;
+  delSelection(strListObj){
+    if(this.#delSelectionInfo(strListObj) === null) return;
 
     let combinedStr =
-      this.codeLines.strGet(this.select.range.lowerLineI)
+      strListObj.strGet(this.select.range.lowerLineI)
         .substring(0, this.select.range.lowerCharI) +
-      this.codeLines.strGet(this.select.range.upperLineI)
+      strListObj.strGet(this.select.range.upperLineI)
         .substring(this.select.range.upperCharI);
-    this.codeLines.strSet(this.select.range.lowerLineI, combinedStr);
+    strListObj.strSet(this.select.range.lowerLineI, combinedStr);
 
     for(let i=this.select.range.lineCount-1; i>0; i--){
-      this.codeLines.lineDel(this.select.range.lowerLineI+1);
+      strListObj.lineDel(this.select.range.lowerLineI+1);
     }
 
     this.cursor.lineI = this.select.range.lowerLineI;
     this.cursor.charI = this.select.range.lowerCharI;
     this.select.range.initTo(this.cursor.lineI, this.cursor.charI);
   }
-  #delSelectionInfo(){
+  #delSelectionInfo(strListObj){
     if(this.select.range.isNull) return null;
 
     let newLowerLineLen =
       this.select.range.lowerCharI +
-      this.codeLines.strLen(this.select.range.upperLineI) -
+      strListObj.strLen(this.select.range.upperLineI) -
       this.select.range.upperCharI;
-    if(newLowerLineLen > NUM.NODE_WIDTH_MAIN) return null;
+    if(newLowerLineLen > strListObj.lineW) return null;
 
-    let newLineCount = this.codeLines.lineCount() -
+    let newLineCount = strListObj.lineCount() -
       this.select.range.upperLineI + this.select.range.lowerLineI;
     return {
       lowerLineLen: newLowerLineLen,
@@ -411,9 +412,9 @@ class NodeContainer{
   attemptCut(){
     let savedSelection = this.attemptCopy();
     if(savedSelection === null) return null;
-    if(this.#delSelectionInfo() === null) return null;
-    
-    this.delSelection();
+    if(this.#delSelectionInfo(this.codeLines) === null) return null;
+
+    this.delSelection(this.codeLines);
     return savedSelection;
   }
   attemptPaste(clipboardStr){
@@ -426,62 +427,53 @@ class NodeContainer{
       pastedLines[i] = pastedLines[i].toUpperCase();
       if(!ALLOWED_CHARS.test(pastedLines[i])) return;
     }
-    let zeroOrMoreSpaces = /^ *$/;
-    let isLastEmpty = zeroOrMoreSpaces.test(pastedLines[pastedLines.length-1]);
 
     let newCursorLineI = pastedLines.length-1; // Appended to later
     let newCursorCharI = 0; // Set later
+    let tempLines = StringList.constructCopy(this.codeLines);
     if(this.select.range.isNull){
-      if(this.codeLines.lineCount() + pastedLines.length -
-        (isLastEmpty ? 2 : 1) > this.codeLines.maxLines) return;
-
-      pastedLines[0] = this.codeLines.strGet(this.cursor.lineI)
+      pastedLines[0] = tempLines.strGet(this.cursor.lineI)
         .substring(0, this.cursor.charI) + pastedLines[0];
 
       newCursorLineI += this.cursor.lineI;
       newCursorCharI = pastedLines[pastedLines.length-1].length;
 
-      pastedLines[pastedLines.length-1] += this.codeLines
+      pastedLines[pastedLines.length-1] += tempLines
         .strGet(this.cursor.lineI).substring(this.cursor.charI);
-
-      for(let pastedLine of pastedLines){
-        if(pastedLine.length > NUM.NODE_WIDTH_MAIN) return;
-      }
     }else{
-      let afterDel = this.#delSelectionInfo();
-
+      let afterDel = this.#delSelectionInfo(tempLines);
       if(afterDel === null) return;
-      if(afterDel.lineCount + pastedLines.length -
-        (isLastEmpty ? 2 : 1) > this.codeLines.maxLines) return;
 
-      pastedLines[0] = this.codeLines.strGet(this.select.range.lowerLineI)
+      pastedLines[0] = tempLines.strGet(this.select.range.lowerLineI)
         .substring(0, this.select.range.lowerCharI) + pastedLines[0];
 
       newCursorLineI += this.select.range.lowerLineI;
       newCursorCharI = pastedLines[pastedLines.length-1].length;
 
-      pastedLines[pastedLines.length-1] += this.codeLines
+      pastedLines[pastedLines.length-1] += tempLines
         .strGet(this.select.range.upperLineI)
         .substring(this.select.range.upperCharI);
 
-      for(let pastedLine of pastedLines){
-        if(pastedLine.length > NUM.NODE_WIDTH_MAIN) return;
-      }
-
-      this.delSelection();
-    }
-    // If on last node line and last pastedLine is empty, remove empty line
-    if(isLastEmpty && newCursorLineI === this.codeLines.maxLines){
-      newCursorLineI -= 1;
-      pastedLines.splice(-1);
-      newCursorCharI = pastedLines[pastedLines.length-1].length;
+      this.delSelection(tempLines);
     }
 
     for(let i=0; i<pastedLines.length-1; i++)
-      this.codeLines.lineAdd(this.cursor.lineI);
+      tempLines.lineAdd(this.cursor.lineI);
     for(let i=0; i<pastedLines.length; i++)
-      this.codeLines.strSet(this.cursor.lineI+i, pastedLines[i]);
+      tempLines.strSet(this.cursor.lineI+i, pastedLines[i]);
 
+    while(tempLines.lineCount() > tempLines.maxLines){
+      // Tests for if last string empty or only has space(s)
+      if(!/^ *$/.test(tempLines.strGet(tempLines.lineCount()-1))) return;
+      tempLines.lineDel(tempLines.lineCount()-1);
+    }
+    if(newCursorLineI >= tempLines.lineCount()){
+      newCursorLineI = tempLines.lineCount()-1;
+      newCursorCharI = tempLines.strLen(tempLines.lineCount()-1);
+    }
+    if(!tempLines.isValid()) return;
+
+    this.codeLines.linesSet(tempLines.linesGet().slice());
     this.cursor.lineI = newCursorLineI;
     this.cursor.charI = newCursorCharI;
   }

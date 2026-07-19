@@ -6,10 +6,17 @@ class StringList{
   #maxLines;
   #lineStrs;
 
-  constructor(lineW, maxLines){
+  constructor(lineW, maxLines, lineStrs){
     this.#lineW = lineW;
     this.#maxLines = maxLines;
-    this.#lineStrs = [""];
+    this.#lineStrs = lineStrs;
+  }
+  static constructNew(lineW, maxLines){
+    return new StringList(lineW, maxLines, [""]);
+  }
+  static constructCopy(origin){
+    return new StringList(
+      origin.lineW, origin.maxLines, origin.linesGet().slice());
   }
 
   get lineW(){
@@ -21,22 +28,29 @@ class StringList{
   lineCount(){
     return this.#lineStrs.length;
   }
+  isValid(){
+    if(!this.lineCount().within(1, true, this.#maxLines, true)) return false;
+    for(const line of this.#lineStrs){
+      if(line.length > this.#lineW) return false;
+      if(!ALLOWED_CHARS.test(line)) return false;
+    }
+    return true;
+  }
 
   linesGet(){
     return this.#lineStrs;
   }
   linesSet(lines){
     if(!Array.isArray(lines)) return;
-    if(lines.length > this.#maxLines) return;
-    for(let i=0; i<lines.length; i++){
-      if(typeof lines[i] !== "string") return;
+    if(lines.length === 0) return;
+    for(const line of lines){
+      if(typeof line !== "string") return;
     }
 
     this.#lineStrs = lines;
   }
-  
+
   lineAdd(lineI){
-    if(this.lineCount() >= this.#maxLines) return;
     this.#lineStrs.splice(lineI+1, 0, "");
   }
   lineDel(lineI){
@@ -50,7 +64,6 @@ class StringList{
     return this.#lineStrs[lineI];
   }
   strSet(lineI, strValue){
-    if(lineI >= this.#maxLines) return;
     // Expand #lineStrs until lineI
     while(lineI >= this.lineCount())
       this.#lineStrs.push("");

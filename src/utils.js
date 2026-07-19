@@ -1,3 +1,5 @@
+"use strict";
+
 /** Return whether number is within bounds (inclusive optional) */
 if (!Number.prototype.within){
   Number.prototype.within = function (

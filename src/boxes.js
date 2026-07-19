@@ -28,6 +28,7 @@ class BoxText extends Box{
     extraH=0,
     isTextCentered=false,
     isBorderFull=false,
+    isEditable=false,
   }){
     super({
       x: x,
@@ -41,8 +42,9 @@ class BoxText extends Box{
     this.offsetY = Math.floor(extraH/2); // Y-padding for text lines (px)
     /** If true, text is centered within box's width */
     this.isTextCentered = isTextCentered;
-    /** List of strings to draw to box */
-    this.lines = new StringList(boxCharW, boxCharH);
+    /** Object with list of strings to draw to box */
+    this.lines = StringList.constructNew(
+      boxCharW - (isEditable ? 1 : 0), boxCharH);
   }
 
   /** Draws single string from string list to canvas */
@@ -82,6 +84,7 @@ class BoxCode extends BoxText{
       y: y,
       boxCharW: boxCharW,
       boxCharH: boxCharH,
+      isEditable: true,
     });
     this.activeLine = null; // Indicates currently executing line
     this.executable = true; // True if the current line was just reached

@@ -13,9 +13,9 @@ let nodeManager = new NodeContainer([
 for(let i=0; i<2; i++){
   for(let i2=0; i2<NUM.NODE_HEIGHT-1; i2++)
     nodeManager.nodes[i].mainTextBox.lines
-      .strSet(i2, "testing " + (i2+NUM.NODE_HEIGHT*i));
+      .strSet(i2, "TESTING " + (i2+NUM.NODE_HEIGHT*i));
   nodeManager.nodes[i].mainTextBox.lines
-    .strSet(NUM.NODE_HEIGHT-1, "1: mov r#ght right");
+    .strSet(NUM.NODE_HEIGHT-1, "1: MOV R#GHT RIGHT");
 }
 
 nodeManager.nodes[1].codeBox.activeLine = NUM.NODE_HEIGHT-1;
