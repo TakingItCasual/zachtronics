@@ -1,7 +1,7 @@
 "use strict";
 
-/** Return whether number is within bounds (inclusive optional) */
 if (!Number.prototype.within){
+  /** Returns whether number is within bounds (inclusive optional) */
   Number.prototype.within = function (
       lowerBound, isLowerInclusive, upperBound, isUpperInclusive){
     if(this < lowerBound) return false;

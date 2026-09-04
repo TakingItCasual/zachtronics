@@ -2,9 +2,11 @@
 
 /** Contains and manages list of strings */
 class StringList{
-  #lineW;
-  #maxLines;
   #lineStrs;
+  /** Not enforced, but for isValid() */
+  #lineW;
+  /** Not enforced, but for isValid() */
+  #maxLines;
 
   constructor(lineW, maxLines, lineStrs){
     this.#lineW = lineW;
@@ -16,7 +18,7 @@ class StringList{
   }
   static constructCopy(origin){
     return new StringList(
-      origin.lineW, origin.maxLines, origin.linesGet().slice());
+      origin.lineW, origin.maxLines, origin.linesGet());
   }
 
   get lineW(){
@@ -36,9 +38,12 @@ class StringList{
     }
     return true;
   }
+  #isValidLineIndex(lineI){
+    return lineI.within(0, true, this.lineCount(), false);
+  }
 
   linesGet(){
-    return this.#lineStrs;
+    return this.#lineStrs.slice();
   }
   linesSet(lines){
     if(!Array.isArray(lines)) return;
@@ -54,13 +59,13 @@ class StringList{
     this.#lineStrs.splice(lineI+1, 0, "");
   }
   lineDel(lineI){
-    if(lineI >= this.lineCount()) return;
+    if(!this.#isValidLineIndex(lineI)) return;
     if(this.lineCount() <= 1) return; // Don't want an empty lineStrs
     this.#lineStrs.splice(lineI, 1);
   }
 
   strGet(lineI){
-    if(lineI >= this.lineCount()) return "";
+    if(!this.#isValidLineIndex(lineI)) return "";
     return this.#lineStrs[lineI];
   }
   strSet(lineI, strValue){
@@ -71,11 +76,11 @@ class StringList{
     this.#lineStrs[lineI] = strValue.substring(0, this.#lineW);
   }
   strLen(lineI){
-    if(lineI >= this.lineCount()) return 0;
+    if(!this.#isValidLineIndex(lineI)) return 0;
     return this.#lineStrs[lineI].length;
   }
-  strCut(lineI, charI){ // Cuts string charI from end
-    if(lineI >= this.lineCount()) return "";
+  strCut(lineI, charI){ // Cuts and returns string charI from end
+    if(!this.#isValidLineIndex(lineI)) return "";
     if(charI > this.strLen(lineI)) return "";
     let cutStr = this.#lineStrs[lineI].slice(-charI);
     this.#lineStrs[lineI] = this.#lineStrs[lineI].slice(0, -charI);
@@ -83,15 +88,14 @@ class StringList{
   }
 
   charAdd(lineI, charI, charVar){
-    if(lineI >= this.lineCount()) return;
-    if(charI > this.strLen(lineI))
-      charI = this.strLen(lineI);
+    if(!this.#isValidLineIndex(lineI)) return;
+    charI = Math.min(charI, this.strLen(lineI));
     let str = this.#lineStrs[lineI];
     this.strSet(lineI,
       str.substring(0, charI) + charVar + str.substring(charI));
   }
   charDel(lineI, charI){
-    if(lineI >= this.lineCount()) return;
+    if(!this.#isValidLineIndex(lineI)) return;
     if(charI > this.strLen(lineI)) return;
     let str = this.#lineStrs[lineI];
     this.strSet(lineI, str.substring(0, charI-1) + str.substring(charI));

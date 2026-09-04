@@ -176,14 +176,14 @@ class NodeContainer{
     }
   }
 
-  /** Get pixel coordinates of node main text box text area top left corner */
+  /** Gets pixel coordinates of node main text box text area top left corner */
   #nodeTopLeft(nodeI){
     let topLeftX = this.nodes[nodeI].mainTextBox.x + NUM.CHAR_GAP;
     let topLeftY = this.nodes[nodeI].mainTextBox.y + 2*NUM.CHAR_GAP +
       this.nodes[nodeI].mainTextBox.offsetY - Math.floor(NUM.CHAR_GAP/2);
     return [topLeftX, topLeftY];
   }
-  /** Set selection cursor from mouse position */
+  /** Sets selection cursor from mouse position */
   #cursorToMouse(nodeI, mPos){
     let topLeftX = 0;
     let topLeftY = 0;
@@ -195,7 +195,7 @@ class NodeContainer{
       this.nodes[nodeI].mainTextBox.lines.strLen(this.cursor.lineI),
       Math.floor((mPos.x-topLeftX)/NUM.CHAR_WIDTH)));
   }
-  /** Get index of moused-over codeBox (-1 if N/A or for executing node) */
+  /** Gets index of moused-over codeBox (-1 if N/A or for executing node) */
   #getMousedOverNodeI(mPos){
     let topLeftX = 0;
     let topLeftY = 0;
@@ -365,9 +365,8 @@ class NodeContainer{
     }else if(direction === DIR.UP){
       if(this.cursor.lineI > 0){
         this.cursor.lineI -= 1;
-        if(this.cursor.charI > this.codeLines.strLen(this.cursor.lineI)){
-          this.cursor.charI = this.codeLines.strLen(this.cursor.lineI);
-        }
+        this.cursor.charI = Math.min(
+          this.cursor.charI, this.codeLines.strLen(this.cursor.lineI));
       }else{
         this.cursor.charI = 0;
       }
@@ -381,9 +380,8 @@ class NodeContainer{
     }else if(direction === DIR.DOWN){
       if(this.cursor.lineI < this.codeLines.lineCount()-1){
         this.cursor.lineI += 1;
-        if(this.cursor.charI > this.codeLines.strLen(this.cursor.lineI)){
-          this.cursor.charI = this.codeLines.strLen(this.cursor.lineI);
-        }
+        this.cursor.charI = Math.min(
+          this.cursor.charI, this.codeLines.strLen(this.cursor.lineI));
       }else{
         this.cursor.charI = this.codeLines.strLen(this.cursor.lineI);
       }
@@ -473,7 +471,7 @@ class NodeContainer{
     }
     if(!tempLines.isValid()) return;
 
-    this.codeLines.linesSet(tempLines.linesGet().slice());
+    this.codeLines.linesSet(tempLines.linesGet());
     this.cursor.lineI = newCursorLineI;
     this.cursor.charI = newCursorCharI;
   }

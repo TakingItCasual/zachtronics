@@ -9,7 +9,7 @@ const NUM = Object.freeze({
   },
   /** Max number of characters in BoxCode string line */
   NODE_WIDTH_MAIN: 18,
-  /** Max number of characters in node sidebar */
+  /** Max number of characters in node sidebar string line */
   get NODE_WIDTH_SIDE(){
     return this.ACC_MIN.toString().length + 1;
   },

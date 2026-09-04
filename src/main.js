@@ -10,15 +10,18 @@ let nodeManager = new NodeContainer([
   [1, 2, 0, 1]
 ]);
 
-for(let i=0; i<2; i++){
-  for(let i2=0; i2<NUM.NODE_HEIGHT-1; i2++)
-    nodeManager.nodes[i].mainTextBox.lines
-      .strSet(i2, "TESTING " + (i2+NUM.NODE_HEIGHT*i));
-  nodeManager.nodes[i].mainTextBox.lines
-    .strSet(NUM.NODE_HEIGHT-1, "1: MOV R#GHT RIGHT");
-}
+for(let i=0; i<NUM.NODE_HEIGHT-1; i++)
+  nodeManager.nodes[0].mainTextBox.lines.strSet(i, "TESTING "+i);
+nodeManager.nodes[0].mainTextBox.lines
+  .strSet(NUM.NODE_HEIGHT-1, "MOV R#GHT RIGHT");
 
-nodeManager.nodes[1].codeBox.activeLine = NUM.NODE_HEIGHT-1;
+nodeManager.nodes[1].mainTextBox.lines.strSet(0, "THE QUICK BROWN");
+nodeManager.nodes[1].mainTextBox.lines.strSet(1, "FOX JUMPS OVER THE");
+nodeManager.nodes[1].mainTextBox.lines.strSet(2, "LAZY DOG.");
+nodeManager.nodes[1].mainTextBox.lines.strSet(3, "1234567890");
+nodeManager.nodes[1].mainTextBox.lines.strSet(4, "!\"#$%&'()*+,-./:;");
+nodeManager.nodes[1].mainTextBox.lines.strSet(5, "<=>?@[\\]_`{|}~");
+nodeManager.nodes[1].codeBox.activeLine = 0;
 nodeManager.nodes[1].BAK = NUM.ACC_MIN;
 
 nodeManager.nodes[2].memoryBox.lines.strSet(0, "254");
@@ -128,12 +131,6 @@ function gameLoop() {
   ctx.beginPath();
   ctx.fillStyle = COLOR.BLACK;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  ctx.fillStyle = COLOR.WHITE;
-  ctx.fillText("ThE qUiCk BrOwN fOx JuMpS oVeR tHe LaZy DoG.", 10, 22);
-  ctx.fillText("1234567890", 10, 22+NUM.LINE_HEIGHT);
-  ctx.fillText("!\"#$%&'()*+,-./:;", 10, 22+NUM.LINE_HEIGHT*2);
-  ctx.fillText("<=>?@[\\]_`{|}~", 10, 22+NUM.LINE_HEIGHT*3);
 
   nodeManager.drawNodes();
 
