@@ -2,7 +2,7 @@
 	font-family: tis-100-copy;
 	src: local("tis 100 copy"),
 		local("tis-100-copy"),
-		url(tis100copy.ttf) format('truetype');
+		url(tis100copy.ttf) format("truetype");
 	font-weight: bold;
 }
 
@@ -23,4 +23,6 @@ canvas#game {
 	padding: 0;
 	margin: 0 auto;
 	display: block;
+  cursor: url("https://pixelarticons.com/free/cursors/default.png") 5 3, auto;
+  image-rendering: pixelated;
 }

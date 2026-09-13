@@ -31,8 +31,8 @@ nodeManager.nodes[2].memoryBox.lines.strSet(2, "782");
 // Source: https://stackoverflow.com/a/17130415
 function getMousePos(evt) {
   let rect = canvas.getBoundingClientRect();
-  let scaleX = canvas.width / rect.width;
-  let scaleY = canvas.height / rect.height;
+  let scaleX = canvas.width / rect.width / canvasScale;
+  let scaleY = canvas.height / rect.height / canvasScale;
 
   return {
     x: Math.floor((evt.clientX - rect.left) * scaleX),
@@ -129,11 +129,13 @@ canvas.addEventListener("dragstart", function(evt) {
 
 function gameLoop() {
   ctx.beginPath();
+
   ctx.fillStyle = COLOR.BLACK;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   nodeManager.drawNodes();
 
+  ctx.closePath();
   requestAnimationFrame(gameLoop);
 }
 requestAnimationFrame(gameLoop);

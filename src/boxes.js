@@ -3,17 +3,21 @@
 /** Empty box, just has its dimensions and draw method */
 class Box{
   constructor({x, y, w, h, isBorderFull=false}){
-    this.x = x + (isBorderFull ? 1 : 0); // x-pos of box's top left (px)
-    this.y = y + (isBorderFull ? 1 : 0); // y-pos of box's top left (px)
-    this.w = w - (isBorderFull ? 2 : 0); // Box's width (px)
-    this.h = h - (isBorderFull ? 2 : 0); // Box's height (px)
+    /** x-pos of box's top left corner on canvas (px) */
+    this.x = x + (isBorderFull ? 1 : 0);
+    /** y-pos of box's top left corner on canvas(px) */
+    this.y = y + (isBorderFull ? 1 : 0);
+    /** Box's width (px) */
+    this.w = w - (isBorderFull ? 2 : 0);
+    /** Box's height (px) */
+    this.h = h - (isBorderFull ? 2 : 0);
     this.isBorderFull = isBorderFull; // Whether box border is 1px or 3px thick
   }
 
   drawBox(boxColor){
     ctx.strokeStyle = boxColor;
     ctx.lineWidth = this.isBorderFull ? 3 : 1;
-    ctx.strokeRect(this.x-0.5, this.y-0.5, this.w, this.h);
+    ctx.strokeRect(this.x+0.5, this.y+0.5, this.w, this.h);
     ctx.lineWidth = 1;
   }
 }
@@ -56,8 +60,8 @@ class BoxText extends Box{
     ctx.fillStyle = textColor;
     ctx.fillText(
       this.lines.strGet(lineI).substring(startChar, endChar),
-      this.x+NUM.CHAR_GAP + offsetX + startChar*NUM.CHAR_WIDTH,
-      this.y+NUM.CHAR_GAP + (lineI+1)*NUM.LINE_HEIGHT + this.offsetY+extraY
+      this.x+NUM.CHAR_GAP + offsetX + startChar*NUM.CHAR_WIDTH + 1,
+      this.y+NUM.CHAR_GAP + (lineI+1)*NUM.LINE_HEIGHT + this.offsetY+extraY + 1
     );
   }
   /** Draws solid bar with height of font's line-height to canvas */
@@ -67,9 +71,9 @@ class BoxText extends Box{
       offsetX = (NUM.CHAR_WIDTH/2)*(this.boxCharW - (endChar - startChar));
     ctx.fillStyle = barColor;
     ctx.fillRect(
-      this.x+NUM.CHAR_GAP + offsetX + startChar*NUM.CHAR_WIDTH - extraStart,
+      this.x+NUM.CHAR_GAP + offsetX + startChar*NUM.CHAR_WIDTH - extraStart + 1,
       this.y + lineI*NUM.LINE_HEIGHT + 2*NUM.CHAR_GAP -
-        Math.floor(NUM.CHAR_GAP/2) + this.offsetY,
+        Math.floor(NUM.CHAR_GAP/2) + this.offsetY + 1,
       (endChar-startChar)*NUM.CHAR_WIDTH + extraStart+extraEnd,
       NUM.LINE_HEIGHT
     );

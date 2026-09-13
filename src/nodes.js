@@ -34,8 +34,15 @@ class _BaseNode{
     if(this.connections["right"] !== null){}
     if(this.connections["down"] !== null){}
   }
-  drawNode(select){
-    this.nodeBox.drawBox(COLOR.LIGHT_GRAY);
+  drawNode(select, color=COLOR.LIGHT_GRAY){
+    ctx.fillStyle = COLOR.BLACK;
+    ctx.fillRect(
+      this.nodeBox.x+0.5,
+      this.nodeBox.y+0.5,
+      this.nodeBox.w,
+      this.nodeBox.h,
+    );
+    this.nodeBox.drawBox(color);
   }
 }
 
@@ -99,7 +106,7 @@ class CorruptNode extends _BaseNode{
   }
 
   drawNode(select){
-    this.nodeBox.drawBox(COLOR.CORRUPT_RED);
+    super.drawNode(select, COLOR.CORRUPT_RED);
 
     this.mainTextBox.drawBox(COLOR.CORRUPT_RED);
     this.mainTextBox.drawBar(COLOR.CORRUPT_RED, 2, 0, 13);
@@ -206,7 +213,7 @@ class ComputeNode extends _BaseNode{
   }
 
   drawNode(select){
-    this.nodeBox.drawBox(COLOR.LIGHT_GRAY);
+    super.drawNode(select);
 
     // Draws the editable codeBox and all relevant bars
     this.codeBox.drawBox(COLOR.LIGHT_GRAY);
@@ -279,7 +286,7 @@ class StackMemNode extends _BaseNode{
   }
 
   drawNode(select){
-    this.nodeBox.drawBox(COLOR.LIGHT_GRAY);
+    super.drawNode(select);
 
     // Draws the description box ("STACK MEMORY NODE")
     this.mainTextBox.drawBox(COLOR.LIGHT_GRAY);

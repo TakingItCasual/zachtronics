@@ -15,16 +15,10 @@ const NUM = Object.freeze({
   },
   /** Max number of string lines in a node (minimum of 14) */
   NODE_HEIGHT: 15,
-  /** Multiplier for ASCII character dimensions */
-  _CHAR_DIM_MULTI: 1,
   /** Height of ASCII characters */
-  get CHAR_HEIGHT(){
-    return this._CHAR_DIM_MULTI * 9;
-  },
+  CHAR_HEIGHT: 9,
   /** Width of ASCII characters (monospacing used, w:h ratio is 8:9) */
-  get CHAR_WIDTH(){
-    return this._CHAR_DIM_MULTI * 8;
-  },
+  CHAR_WIDTH: 8,
   /** Text pixel gap between text lines and from node borders (minimum of 2) */
   CHAR_GAP: 3,
   /** Used for spacing lines apart */
@@ -33,6 +27,8 @@ const NUM = Object.freeze({
   },
   /** Length of time in milliseconds for cursor to blink */
   CURSOR_PERIOD: 800,
+  /** Width/height of node grid cells (px) */
+  GRID_CELL_SIZE: 80,
 });
 
 /** Enum for directions */
@@ -79,5 +75,8 @@ const ALLOWED_CHARS = Object.freeze(/^[\x20-\x60\x7B-\x7E]*$/);
 
 /** HTML canvas of game screen */
 let canvas = document.getElementById("game");
+/** Scaling of canvas */
+let canvasScale = 1;
 /** HTML canvas context */
 let ctx = canvas.getContext("2d", { alpha: false });
+ctx.scale(canvasScale, canvasScale);
