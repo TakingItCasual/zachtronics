@@ -1,0 +1,19 @@
+{
+  "name": "zachtronics",
+  "description": "Ripoff of Zachtronics games",
+  "scripts": {
+    "start": "http-server $INIT_CWD --port=8080 --no-browser"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TakingItCasual/zachtronics.git"
+  },
+  "author": "TakingItCasual",
+  "license": "MIT",
+  "devDependencies": {
+    "eslint": "^10.11.0",
+    "@eslint/js": "^10.0.1",
+    "@stylistic/eslint-plugin": "^5.10.0",
+    "globals": "^17.13.0"
+  }
+}

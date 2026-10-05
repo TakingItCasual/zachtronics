@@ -1,16 +1,16 @@
 "use strict";
 
-const NUM = Object.freeze({
+export const NUM = Object.freeze({
   /** Maximum ACC value */
   ACC_MAX: 999,
   /** Minimum ACC value */
-  get ACC_MIN(){
+  get ACC_MIN() {
     return -this.ACC_MAX;
   },
   /** Max number of characters in BoxCode string line */
   NODE_WIDTH_MAIN: 18,
   /** Max number of characters in node sidebar string line */
-  get NODE_WIDTH_SIDE(){
+  get NODE_WIDTH_SIDE() {
     return this.ACC_MIN.toString().length + 1;
   },
   /** Max number of string lines in a node (minimum of 14) */
@@ -22,7 +22,7 @@ const NUM = Object.freeze({
   /** Text pixel gap between text lines and from node borders (minimum of 2) */
   CHAR_GAP: 3,
   /** Used for spacing lines apart */
-  get LINE_HEIGHT(){
+  get LINE_HEIGHT() {
     return this.CHAR_HEIGHT + this.CHAR_GAP;
   },
   /** Length of time in milliseconds for cursor to blink */
@@ -32,7 +32,7 @@ const NUM = Object.freeze({
 });
 
 /** Enum for directions */
-const DIR = Object.freeze({
+export const DIR = Object.freeze({
   LEFT: Symbol("LEFT"),
   UP: Symbol("UP"),
   RIGHT: Symbol("RIGHT"),
@@ -40,7 +40,7 @@ const DIR = Object.freeze({
 });
 
 /** Hex codes for various colors */
-const COLOR = Object.freeze({
+export const COLOR = Object.freeze({
   WHITE: "#FFFFFF",
   BLACK: "#000000",
   /** Default color for various things (boxes, text, etc.) */
@@ -71,12 +71,4 @@ const COLOR = Object.freeze({
 });
 
 /** Regex of printable ASCII characters (lowercase letters excepted) */
-const ALLOWED_CHARS = Object.freeze(/^[\x20-\x60\x7B-\x7E]*$/);
-
-/** HTML canvas of game screen */
-let canvas = document.getElementById("game");
-/** Scaling of canvas */
-let canvasScale = 1;
-/** HTML canvas context */
-let ctx = canvas.getContext("2d", { alpha: false });
-ctx.scale(canvasScale, canvasScale);
+export const ALLOWED_CHARS = Object.freeze(/^[\x20-\x60\x7B-\x7E]*$/);

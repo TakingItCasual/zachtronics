@@ -1,8 +1,16 @@
 "use strict";
 
+import { NUM, DIR, COLOR, ALLOWED_CHARS } from "./consts.js";
+import { EditorSelection } from "./editor_selection.js";
+import { StringList } from "./string_list.js";
+import { CorruptNode, ComputeNode, StackMemNode } from "./nodes.js";
+import { numWithin } from "./utils.js";
+
 /** Handles nodes and keyboard/mouse activity */
-class NodeContainer{
-  constructor(nodeTypes){
+export class NodeContainer {
+  constructor(canv, nodeTypes) {
+    this.canv = canv;
+
     this.nodesW = nodeTypes[0].length; // Width of table of nodes
     this.nodesH = nodeTypes.length; // Height of table of nodes
 
@@ -13,26 +21,26 @@ class NodeContainer{
     this.cursor = this.select.cursor;
 
     this.nodes = [];
-    let nodeY = Math.floor((NUM.GRID_CELL_SIZE*3 - 195)/2) + 1;
-    for(let y=0; y<this.nodesH; y++){
-      let nodeX = Math.floor((NUM.GRID_CELL_SIZE*3 - 211)/2) + 1
-        + NUM.GRID_CELL_SIZE*3;
-      for(let x=0; x<this.nodesW; x++){
-        if(nodeTypes[y][x] === 0){
-          this.nodes.push(new CorruptNode(nodeX, nodeY));
-        }else if(nodeTypes[y][x] === 1){
-          this.nodes.push(new ComputeNode(nodeX, nodeY));
-        }else if(nodeTypes[y][x] === 2){
-          this.nodes.push(new StackMemNode(nodeX, nodeY));
+    let nodeY = Math.floor((NUM.GRID_CELL_SIZE * 3 - 195) / 2) + 1;
+    for(let y = 0; y < this.nodesH; y++) {
+      let nodeX = Math.floor((NUM.GRID_CELL_SIZE * 3 - 211) / 2) + 1
+        + NUM.GRID_CELL_SIZE * 3;
+      for(let x = 0; x < this.nodesW; x++) {
+        if(nodeTypes[y][x] === 0) {
+          this.nodes.push(new CorruptNode(canv, nodeX, nodeY));
+        } else if(nodeTypes[y][x] === 1) {
+          this.nodes.push(new ComputeNode(canv, nodeX, nodeY));
+        } else if(nodeTypes[y][x] === 2) {
+          this.nodes.push(new StackMemNode(canv, nodeX, nodeY));
         }
-        nodeX += NUM.GRID_CELL_SIZE*3;
+        nodeX += NUM.GRID_CELL_SIZE * 3;
       }
-      nodeY += NUM.GRID_CELL_SIZE*3;
+      nodeY += NUM.GRID_CELL_SIZE * 3;
     }
   }
 
   /** Mouse movement while left mouse button held down */
-  lmbDrag(mPos){
+  lmbDrag(mPos) {
     if(this.select.nodeI === null) return;
 
     this.#cursorToMouse(this.select.nodeI, mPos);
@@ -41,10 +49,10 @@ class NodeContainer{
     this.select.cursorBlink.reset();
   }
   /** Left mouse button pressed down */
-  lmbDown(mPos){
+  lmbDown(mPos) {
     let _nodeI = this.#getMousedOverNodeI(mPos);
     this.select.nodeI = this.codeLines = null;
-    if(_nodeI === -1){
+    if(_nodeI === -1) {
       this.select.focusLost();
       return;
     }
@@ -57,57 +65,55 @@ class NodeContainer{
     this.select.cursorBlink.reset();
   }
   /** Right mouse button pressed down */
-  async rmbDown(mPos){
+  async rmbDown(mPos) {
     let _nodeI = this.#getMousedOverNodeI(mPos);
-    if(_nodeI === -1 || _nodeI !== this.select.nodeI){
+    if(_nodeI === -1 || _nodeI !== this.select.nodeI) {
       this.select.focusLost();
       return;
     }
 
-    if(this.select.range.isNull){
+    if(this.select.range.isNull) {
       navigator.clipboard.readText()
         .then(text => {
           this.attemptPaste(text);
         }).catch(err => {
-          console.error('Failed to read clipboard contents: ', err);
+          console.error("Failed to read clipboard contents: ", err);
         });
-    }else{
+    } else {
       let cutStr = this.attemptCut();
       if(cutStr === null) return;
       navigator.clipboard.writeText(cutStr)
         .catch(err => {
           this.attemptPaste(cutStr);
-          console.error('Failed to write clipboard contents: ', err);
+          console.error("Failed to write clipboard contents: ", err);
         });
     }
   }
 
   /** Gets pixel coordinates of node main text box text area top left corner */
-  #nodeTopLeft(nodeI){
+  #nodeTopLeft(nodeI) {
     let topLeftX = this.nodes[nodeI].mainTextBox.x + NUM.CHAR_GAP;
-    let topLeftY = this.nodes[nodeI].mainTextBox.y + 2*NUM.CHAR_GAP +
-      this.nodes[nodeI].mainTextBox.offsetY - Math.floor(NUM.CHAR_GAP/2);
+    let topLeftY = this.nodes[nodeI].mainTextBox.y + 2 * NUM.CHAR_GAP
+      + this.nodes[nodeI].mainTextBox.offsetY - Math.floor(NUM.CHAR_GAP / 2);
     return [topLeftX, topLeftY];
   }
   /** Sets selection cursor from mouse position */
-  #cursorToMouse(nodeI, mPos){
-    let topLeftX = 0;
-    let topLeftY = 0;
+  #cursorToMouse(nodeI, mPos) {
+    let topLeftX;
+    let topLeftY;
     [topLeftX, topLeftY] = this.#nodeTopLeft(nodeI);
     this.cursor.lineI = Math.max(0, Math.min(
-      this.nodes[nodeI].mainTextBox.lines.lineCount()-1,
-      Math.floor((mPos.y-topLeftY)/NUM.LINE_HEIGHT)));
+      this.nodes[nodeI].mainTextBox.lines.lineCount() - 1,
+      Math.floor((mPos.y - topLeftY) / NUM.LINE_HEIGHT)));
     this.cursor.charI = Math.max(0, Math.min(
       this.nodes[nodeI].mainTextBox.lines.strLen(this.cursor.lineI),
-      Math.floor((mPos.x-topLeftX)/NUM.CHAR_WIDTH)));
+      Math.floor((mPos.x - topLeftX) / NUM.CHAR_WIDTH)));
   }
   /** Gets index of moused-over codeBox (-1 if N/A or for executing node) */
-  #getMousedOverNodeI(mPos){
-    let topLeftX = 0;
-    let topLeftY = 0;
-    let bottomRightX = 0;
-    let bottomRightY = 0;
-    for(let i=0; i<this.nodes.length; i++){
+  #getMousedOverNodeI(mPos) {
+    let topLeftX;
+    let topLeftY;
+    for(let i = 0; i < this.nodes.length; i++) {
       // codeBox only exists within ComputeNodes
       if(this.nodes[i].nodeType !== 1) continue;
       // Can't edit text in executing codeBox
@@ -115,49 +121,50 @@ class NodeContainer{
 
       let codeBox = this.nodes[i].codeBox;
       [topLeftX, topLeftY] = this.#nodeTopLeft(i);
-      bottomRightX = topLeftX + codeBox.boxCharW*NUM.CHAR_WIDTH;
-      bottomRightY = topLeftY + codeBox.boxCharH*NUM.LINE_HEIGHT;
+      let bottomRightX = topLeftX + codeBox.boxCharW * NUM.CHAR_WIDTH;
+      let bottomRightY = topLeftY + codeBox.boxCharH * NUM.LINE_HEIGHT;
       if(
-        mPos.x.within(topLeftX, true, bottomRightX, false) &&
-        mPos.y.within(topLeftY, true, bottomRightY, false)
-      ){
+        numWithin(mPos.x, topLeftX, true, bottomRightX, false) &&
+        numWithin(mPos.y, topLeftY, true, bottomRightY, false)
+      ) {
         return i;
       }
     }
     return -1;
   }
 
-  addChar(char){
+  addChar(char) {
     if(this.select.nodeI === null) return;
     if(char.length !== 1) return;
 
     let _char = char.toUpperCase();
     if(!ALLOWED_CHARS.test(_char)) return;
 
-    if(!this.select.range.isNull){
+    if(!this.select.range.isNull) {
       let afterDel = this.#delSelectionInfo(this.codeLines);
       if(afterDel === null) return;
       if(afterDel.lowerLineLen >= this.codeLines.lineW) return;
 
       this.delSelection(this.codeLines);
-    }else if(this.codeLines.strLen(this.cursor.lineI) >= this.codeLines.lineW){
+    } else if(this.codeLines.strLen(this.cursor.lineI) >=
+        this.codeLines.lineW) {
       return;
     }
 
     this.codeLines.charAdd(this.cursor.lineI, this.cursor.charI, _char);
     this.cursor.charI += 1;
   }
-  newLine(){
+  newLine() {
     if(this.select.nodeI === null) return;
 
-    if(!this.select.range.isNull){
+    if(!this.select.range.isNull) {
       let afterDel = this.#delSelectionInfo(this.codeLines);
 
       if(afterDel === null) return;
       if(afterDel.lineCount >= this.codeLines.maxLines) return;
 
       this.delSelection(this.codeLines);
-    }else if(this.codeLines.lineCount() >= this.codeLines.maxLines){
+    } else if(this.codeLines.lineCount() >= this.codeLines.maxLines) {
       return;
     }
 
@@ -168,61 +175,61 @@ class NodeContainer{
     this.cursor.lineI += 1;
     this.cursor.charI = 0;
 
-    if(distToEndOfLine > 0){
+    if(distToEndOfLine > 0) {
       let strToMove = this.codeLines
-        .strCut(this.cursor.lineI-1, distToEndOfLine);
+        .strCut(this.cursor.lineI - 1, distToEndOfLine);
       this.codeLines.strSet(this.cursor.lineI, strToMove);
     }
   }
-  bakChar(){
+  bakChar() {
     if(this.select.nodeI === null) return;
 
-    if(!this.select.range.isNull){
+    if(!this.select.range.isNull) {
       this.delSelection(this.codeLines);
-    }else if(this.cursor.charI > 0){
+    } else if(this.cursor.charI > 0) {
       this.codeLines.charDel(this.cursor.lineI, this.cursor.charI);
       this.cursor.charI -= 1;
-    }else if(this.cursor.lineI > 0){
+    } else if(this.cursor.lineI > 0) {
       if(
-        this.codeLines.strLen(this.cursor.lineI-1) +
+        this.codeLines.strLen(this.cursor.lineI - 1) +
         this.codeLines.strLen(this.cursor.lineI) <=
         this.codeLines.lineW
-      ){
+      ) {
         this.cursor.lineI -= 1;
         this.cursor.charI = this.codeLines.strLen(this.cursor.lineI);
 
         let combinedStr =
           this.codeLines.strGet(this.cursor.lineI) +
-          this.codeLines.strGet(this.cursor.lineI+1);
+          this.codeLines.strGet(this.cursor.lineI + 1);
         this.codeLines.strSet(this.cursor.lineI, combinedStr);
 
-        this.codeLines.lineDel(this.cursor.lineI+1);
+        this.codeLines.lineDel(this.cursor.lineI + 1);
       }
     }
   }
-  delChar(){
+  delChar() {
     if(this.select.nodeI === null) return;
 
-    if(!this.select.range.isNull){
+    if(!this.select.range.isNull) {
       this.delSelection(this.codeLines);
-    }else if(this.cursor.charI < this.codeLines.strLen(this.cursor.lineI)){
-      this.codeLines.charDel(this.cursor.lineI, this.cursor.charI+1);
-    }else if(this.cursor.lineI < this.codeLines.lineCount()-1){
+    } else if(this.cursor.charI < this.codeLines.strLen(this.cursor.lineI)) {
+      this.codeLines.charDel(this.cursor.lineI, this.cursor.charI + 1);
+    } else if(this.cursor.lineI < this.codeLines.lineCount() - 1) {
       if(
         this.codeLines.strLen(this.cursor.lineI) +
-        this.codeLines.strLen(this.cursor.lineI+1) <=
+        this.codeLines.strLen(this.cursor.lineI + 1) <=
         this.codeLines.lineW
-      ){
+      ) {
         let combinedStr =
           this.codeLines.strGet(this.cursor.lineI) +
-          this.codeLines.strGet(this.cursor.lineI+1);
+          this.codeLines.strGet(this.cursor.lineI + 1);
         this.codeLines.strSet(this.cursor.lineI, combinedStr);
 
-        this.codeLines.lineDel(this.cursor.lineI+1);
+        this.codeLines.lineDel(this.cursor.lineI + 1);
       }
     }
   }
-  delSelection(strListObj){
+  delSelection(strListObj) {
     if(this.#delSelectionInfo(strListObj) === null) return;
 
     let combinedStr =
@@ -232,15 +239,15 @@ class NodeContainer{
         .substring(this.select.range.upperCharI);
     strListObj.strSet(this.select.range.lowerLineI, combinedStr);
 
-    for(let i=this.select.range.lineCount-1; i>0; i--){
-      strListObj.lineDel(this.select.range.lowerLineI+1);
+    for(let i = this.select.range.lineCount - 1; i > 0; i--) {
+      strListObj.lineDel(this.select.range.lowerLineI + 1);
     }
 
     this.cursor.lineI = this.select.range.lowerLineI;
     this.cursor.charI = this.select.range.lowerCharI;
     this.select.range.initTo(this.cursor.lineI, this.cursor.charI);
   }
-  #delSelectionInfo(strListObj){
+  #delSelectionInfo(strListObj) {
     if(this.select.range.isNull) return null;
 
     let newLowerLineLen =
@@ -257,55 +264,55 @@ class NodeContainer{
     };
   }
 
-  arrowKey(direction){
+  arrowKey(direction) {
     if(this.select.nodeI === null) return;
 
     this.select.range.initTo(0, 0);
-    if(direction === DIR.LEFT){
-      if(this.cursor.charI > 0){
+    if(direction === DIR.LEFT) {
+      if(this.cursor.charI > 0) {
         this.cursor.charI -= 1;
-      }else if(this.cursor.lineI > 0){
+      } else if(this.cursor.lineI > 0) {
         this.cursor.lineI -= 1;
         this.cursor.charI = this.codeLines.strLen(this.cursor.lineI);
       }
-    }else if(direction === DIR.UP){
-      if(this.cursor.lineI > 0){
+    } else if(direction === DIR.UP) {
+      if(this.cursor.lineI > 0) {
         this.cursor.lineI -= 1;
         this.cursor.charI = Math.min(
           this.cursor.charI, this.codeLines.strLen(this.cursor.lineI));
-      }else{
+      } else {
         this.cursor.charI = 0;
       }
-    }else if(direction === DIR.RIGHT){
-      if(this.cursor.charI < this.codeLines.strLen(this.cursor.lineI)){
+    } else if(direction === DIR.RIGHT) {
+      if(this.cursor.charI < this.codeLines.strLen(this.cursor.lineI)) {
         this.cursor.charI += 1;
-      }else if(this.cursor.lineI < this.codeLines.lineCount()-1){
+      } else if(this.cursor.lineI < this.codeLines.lineCount() - 1) {
         this.cursor.lineI += 1;
         this.cursor.charI = 0;
       }
-    }else if(direction === DIR.DOWN){
-      if(this.cursor.lineI < this.codeLines.lineCount()-1){
+    } else if(direction === DIR.DOWN) {
+      if(this.cursor.lineI < this.codeLines.lineCount() - 1) {
         this.cursor.lineI += 1;
         this.cursor.charI = Math.min(
           this.cursor.charI, this.codeLines.strLen(this.cursor.lineI));
-      }else{
+      } else {
         this.cursor.charI = this.codeLines.strLen(this.cursor.lineI);
       }
     }
   }
 
-  attemptCopy(){
+  attemptCopy() {
     if(this.select.nodeI === null) return null;
     if(this.select.range.lineCount === 0) return null;
 
-    if(this.select.range.lineCount === 1){
+    if(this.select.range.lineCount === 1) {
       return this.codeLines.strGet(this.select.range.lowerLineI)
         .substring(this.select.range.lowerCharI, this.select.range.upperCharI);
     }
 
     let strParts = [this.codeLines.strGet(this.select.range.lowerLineI)
       .substring(this.select.range.lowerCharI)];
-    for(let i=1; i<this.select.range.lineCount-1; i++){
+    for(let i = 1; i < this.select.range.lineCount - 1; i++) {
       strParts.push(this.codeLines.strGet(this.select.range.lowerLineI + i));
     }
     strParts.push(this.codeLines.strGet(this.select.range.upperLineI)
@@ -313,7 +320,7 @@ class NodeContainer{
 
     return strParts.join("\n");
   }
-  attemptCut(){
+  attemptCut() {
     let savedSelection = this.attemptCopy();
     if(savedSelection === null) return null;
     if(this.#delSelectionInfo(this.codeLines) === null) return null;
@@ -321,30 +328,30 @@ class NodeContainer{
     this.delSelection(this.codeLines);
     return savedSelection;
   }
-  attemptPaste(clipboardStr){
+  attemptPaste(clipboardStr) {
     if(this.select.nodeI === null) return;
     if(!clipboardStr) return;
     if(typeof clipboardStr !== "string") return;
 
     let pastedLines = clipboardStr.split(/\r?\n/);
-    for(let i=0; i<pastedLines.length-1; i++){
+    for(let i = 0; i < pastedLines.length - 1; i++) {
       pastedLines[i] = pastedLines[i].toUpperCase();
       if(!ALLOWED_CHARS.test(pastedLines[i])) return;
     }
 
-    let newCursorLineI = pastedLines.length-1; // Appended to later
-    let newCursorCharI = 0; // Set later
+    let newCursorLineI = pastedLines.length - 1; // Appended to later
+    let newCursorCharI;
     let tempLines = StringList.constructCopy(this.codeLines);
-    if(this.select.range.isNull){
+    if(this.select.range.isNull) {
       pastedLines[0] = tempLines.strGet(this.cursor.lineI)
         .substring(0, this.cursor.charI) + pastedLines[0];
 
       newCursorLineI += this.cursor.lineI;
-      newCursorCharI = pastedLines[pastedLines.length-1].length;
+      newCursorCharI = pastedLines[pastedLines.length - 1].length;
 
-      pastedLines[pastedLines.length-1] += tempLines
+      pastedLines[pastedLines.length - 1] += tempLines
         .strGet(this.cursor.lineI).substring(this.cursor.charI);
-    }else{
+    } else {
       let afterDel = this.#delSelectionInfo(tempLines);
       if(afterDel === null) return;
 
@@ -352,28 +359,28 @@ class NodeContainer{
         .substring(0, this.select.range.lowerCharI) + pastedLines[0];
 
       newCursorLineI += this.select.range.lowerLineI;
-      newCursorCharI = pastedLines[pastedLines.length-1].length;
+      newCursorCharI = pastedLines[pastedLines.length - 1].length;
 
-      pastedLines[pastedLines.length-1] += tempLines
+      pastedLines[pastedLines.length - 1] += tempLines
         .strGet(this.select.range.upperLineI)
         .substring(this.select.range.upperCharI);
 
       this.delSelection(tempLines);
     }
 
-    for(let i=0; i<pastedLines.length-1; i++)
+    for(let i = 0; i < pastedLines.length - 1; i++)
       tempLines.lineAdd(this.cursor.lineI);
-    for(let i=0; i<pastedLines.length; i++)
-      tempLines.strSet(this.cursor.lineI+i, pastedLines[i]);
+    for(let i = 0; i < pastedLines.length; i++)
+      tempLines.strSet(this.cursor.lineI + i, pastedLines[i]);
 
-    while(tempLines.lineCount() > tempLines.maxLines){
+    while(tempLines.lineCount() > tempLines.maxLines) {
       // Tests for if last string empty or only has space(s)
-      if(!/^ *$/.test(tempLines.strGet(tempLines.lineCount()-1))) return;
-      tempLines.lineDel(tempLines.lineCount()-1);
+      if(!/^ *$/.test(tempLines.strGet(tempLines.lineCount() - 1))) return;
+      tempLines.lineDel(tempLines.lineCount() - 1);
     }
-    if(newCursorLineI >= tempLines.lineCount()){
-      newCursorLineI = tempLines.lineCount()-1;
-      newCursorCharI = tempLines.strLen(tempLines.lineCount()-1);
+    if(newCursorLineI >= tempLines.lineCount()) {
+      newCursorLineI = tempLines.lineCount() - 1;
+      newCursorCharI = tempLines.strLen(tempLines.lineCount() - 1);
     }
     if(!tempLines.isValid()) return;
 
@@ -381,30 +388,30 @@ class NodeContainer{
     this.cursor.lineI = newCursorLineI;
     this.cursor.charI = newCursorCharI;
   }
-  selectAll(){
+  selectAll() {
     if(this.select.nodeI === null) return;
 
     this.select.range.start.lineI = this.select.range.start.charI = 0;
     this.cursor.lineI = this.select.range.current.lineI =
-      this.codeLines.lineCount()-1;
+      this.codeLines.lineCount() - 1;
     this.cursor.charI = this.select.range.current.charI =
       this.codeLines.strLen(this.cursor.lineI);
   }
 
-  drawNodes(){
-    for(let x=0.5; x<canvas.width; x+=NUM.GRID_CELL_SIZE){
-      ctx.moveTo(x, 0.5);
-      ctx.lineTo(x, canvas.height+0.5);
+  drawNodes() {
+    for(let x = 0.5; x < this.canv.canvas.width; x += NUM.GRID_CELL_SIZE) {
+      this.canv.ctx.moveTo(x, 0.5);
+      this.canv.ctx.lineTo(x, this.canv.canvas.height + 0.5);
     }
-    for(let y=0.5; y<canvas.height; y+=NUM.GRID_CELL_SIZE){
-      ctx.moveTo(0.5, y);
-      ctx.lineTo(canvas.width+0.5, y);
+    for(let y = 0.5; y < this.canv.canvas.height; y += NUM.GRID_CELL_SIZE) {
+      this.canv.ctx.moveTo(0.5, y);
+      this.canv.ctx.lineTo(this.canv.canvas.width + 0.5, y);
     }
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = COLOR.MID_GRAY;
-    ctx.stroke();
+    this.canv.ctx.lineWidth = 1;
+    this.canv.ctx.strokeStyle = COLOR.MID_GRAY;
+    this.canv.ctx.stroke();
 
-    for(let i=0; i<this.nodes.length; i++){
+    for(let i = 0; i < this.nodes.length; i++) {
       this.nodes[i].drawNode(this.select.nodeI === i ? this.select : null);
     }
   }

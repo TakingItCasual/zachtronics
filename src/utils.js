@@ -1,15 +1,12 @@
 "use strict";
 
-if (!Number.prototype.within){
-  /** Returns whether number is within bounds (inclusive optional) */
-  Number.prototype.within = function (
-      lowerBound, isLowerInclusive, upperBound, isUpperInclusive){
-    if(this < lowerBound) return false;
-    if(this <= lowerBound && !isLowerInclusive) return false;
-    if(this > upperBound) return false;
-    if(this >= upperBound && !isUpperInclusive) return false;
-    return true;
-  };
-}else{
-  console.error("Number type already contains within property/method.");
+/** Returns whether number is within bounds */
+export function numWithin(
+  num, lowerBound, isLowerInclusive, upperBound, isUpperInclusive,
+) {
+  if(num < lowerBound) return false;
+  if(num <= lowerBound && !isLowerInclusive) return false;
+  if(num > upperBound) return false;
+  if(num >= upperBound && !isUpperInclusive) return false;
+  return true;
 }
