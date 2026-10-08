@@ -7,15 +7,17 @@ import { NodeContainer } from "./node_container.js";
 (function() {
   let canv = new Canvas();
 
-  canv.ctx.strokeStyle = COLOR.WHITE;
-  canv.ctx.font = Math.floor(NUM.CHAR_HEIGHT * 4 / 3) + "pt tis-100-copy";
-
   let nodeManager = new NodeContainer(
     canv,
     [
-      [1, 1, 2, 0],
-      [0, 1, 1, 1],
-      [1, 2, 0, 1],
+      [-6, -3, 1],
+      [-3, -3, 1],
+      [0, -3, 2],
+      [3, -3, 0],
+      [-6, 0, 0],
+      [-3, 0, 1],
+      [0, 0, 1],
+      [3, 0, 2],
     ],
   );
 
@@ -98,6 +100,12 @@ import { NodeContainer } from "./node_container.js";
           break;
         case "ArrowDown":
           nodeManager.arrowKey(DIR.DOWN);
+          break;
+        case "Home":
+          nodeManager.toLineEdge(DIR.LEFT);
+          break;
+        case "End":
+          nodeManager.toLineEdge(DIR.RIGHT);
           break;
         case "Escape":
           nodeManager.select.focusLost();

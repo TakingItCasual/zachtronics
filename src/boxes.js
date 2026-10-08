@@ -8,23 +8,33 @@ import { numWithin } from "./utils.js";
 export class Box {
   constructor({canv, x, y, w, h, isBorderFull = false}) {
     this.canv = canv,
-    /** x-pos of box's top left corner on canvas (px) */
-    this.x = x + (isBorderFull ? 1 : 0);
-    /** y-pos of box's top left corner on canvas (px) */
-    this.y = y + (isBorderFull ? 1 : 0);
+    /** x-pos of box's top left corner in relation to grid origin (px) */
+    this.x = x;
+    /** y-pos of box's top left corner in relation to grid origin (px) */
+    this.y = y;
     /** Box's width (px) */
-    this.w = w - (isBorderFull ? 2 : 0);
+    this.w = w;
     /** Box's height (px) */
-    this.h = h - (isBorderFull ? 2 : 0);
+    this.h = h;
     /** Whether box border is 1px or 3px thick */
     this.isBorderFull = isBorderFull;
   }
 
   drawBox(boxColor) {
     this.canv.ctx.strokeStyle = boxColor;
-    this.canv.ctx.lineWidth = this.isBorderFull ? 3 : 1;
-    this.canv.ctx.strokeRect(this.x + 0.5, this.y + 0.5, this.w, this.h);
-    this.canv.ctx.lineWidth = 1;
+    if(!this.isBorderFull) {
+      this.canv.ctx.strokeRect(
+        this.x + this.canv.grid.origin.x + 0.5,
+        this.y + this.canv.grid.origin.y + 0.5,
+        this.w, this.h);
+    } else {
+      this.canv.ctx.lineWidth = 3;
+      this.canv.ctx.strokeRect(
+        this.x + this.canv.grid.origin.x + 1.5,
+        this.y + this.canv.grid.origin.y + 1.5,
+        this.w - 2, this.h - 2);
+      this.canv.ctx.lineWidth = 1;
+    }
   }
 }
 
@@ -72,9 +82,10 @@ export class BoxText extends Box {
     this.canv.ctx.fillStyle = textColor;
     this.canv.ctx.fillText(
       this.lines.strGet(lineI).substring(startChar, endChar),
-      this.x + NUM.CHAR_GAP + offsetX + startChar * NUM.CHAR_WIDTH + 1,
-      this.y + NUM.CHAR_GAP + (lineI + 1) * NUM.LINE_HEIGHT + this.offsetY
-      + extraY + 1,
+      this.x + this.canv.grid.origin.x + NUM.CHAR_GAP + offsetX
+      + startChar * NUM.CHAR_WIDTH + 1,
+      this.y + this.canv.grid.origin.y + NUM.CHAR_GAP
+      + (lineI + 1) * NUM.LINE_HEIGHT + this.offsetY + extraY + 1,
     );
   }
   /** Draws solid bar with height of font's line-height to canvas */
@@ -84,10 +95,10 @@ export class BoxText extends Box {
       offsetX = (NUM.CHAR_WIDTH / 2) * (this.boxCharW - (endChar - startChar));
     this.canv.ctx.fillStyle = barColor;
     this.canv.ctx.fillRect(
-      this.x + NUM.CHAR_GAP + offsetX + startChar * NUM.CHAR_WIDTH
-      - extraStart + 1,
-      this.y + lineI * NUM.LINE_HEIGHT + 2 * NUM.CHAR_GAP
-      - Math.floor(NUM.CHAR_GAP / 2) + this.offsetY + 1,
+      this.x + this.canv.grid.origin.x + NUM.CHAR_GAP + offsetX
+      + startChar * NUM.CHAR_WIDTH - extraStart + 1,
+      this.y + this.canv.grid.origin.y + lineI * NUM.LINE_HEIGHT
+      + 2 * NUM.CHAR_GAP - Math.floor(NUM.CHAR_GAP / 2) + this.offsetY + 1,
       (endChar - startChar) * NUM.CHAR_WIDTH + extraStart + extraEnd,
       NUM.LINE_HEIGHT,
     );

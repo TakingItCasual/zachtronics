@@ -7,17 +7,11 @@ import { Box, BoxText, BoxCode } from "./boxes.js";
 class _BaseNode {
   _sideWidthPx = NUM.NODE_WIDTH_SIDE * NUM.CHAR_WIDTH + NUM.CHAR_GAP * 2;
 
-  constructor(
-    {canv, nodeType, x, y, isMainTextCentered, isBorderFull = false},
-  ) {
+  constructor({
+    canv, nodeType, x, y, isMainTextCentered, isBorderFull = false,
+  }) {
     this.canv = canv;
     this.nodeType = nodeType;
-    this.connections = {
-      "left": null,
-      "up": null,
-      "right": null,
-      "down": null,
-    };
     this.mainTextBox = new BoxText({
       canv: canv,
       x: x + 2,
@@ -36,17 +30,11 @@ class _BaseNode {
     });
   }
 
-  drawConnections() {
-    //if(this.connections["left"] !== null){}
-    //if(this.connections["up"] !== null){}
-    //if(this.connections["right"] !== null){}
-    //if(this.connections["down"] !== null){}
-  }
   drawNode(select, color = COLOR.LIGHT_GRAY) {
     this.canv.ctx.fillStyle = COLOR.BLACK;
     this.canv.ctx.fillRect(
-      this.nodeBox.x + 0.5,
-      this.nodeBox.y + 0.5,
+      this.nodeBox.x + this.canv.grid.origin.x + 0.5,
+      this.nodeBox.y + this.canv.grid.origin.y + 0.5,
       this.nodeBox.w,
       this.nodeBox.h,
     );
@@ -111,7 +99,7 @@ export class CorruptNode extends _BaseNode {
     this.sideBox3 = new Box({
       canv: canv,
       x: sideX,
-      y: y + this.sideBox1.h,
+      y: y + this.sideBox1.h - 2,
       w: sideW,
       h: sideH + expandCalc(3, false),
       isBorderFull: true,

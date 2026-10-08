@@ -8,11 +8,8 @@ import { numWithin } from "./utils.js";
 
 /** Handles nodes and keyboard/mouse activity */
 export class NodeContainer {
-  constructor(canv, nodeTypes) {
+  constructor(canv, nodesInfo) {
     this.canv = canv;
-
-    this.nodesW = nodeTypes[0].length; // Width of table of nodes
-    this.nodesH = nodeTypes.length; // Height of table of nodes
 
     this.select = new EditorSelection();
     /** Object reference for focused codeBox's StringList */
@@ -21,21 +18,18 @@ export class NodeContainer {
     this.cursor = this.select.cursor;
 
     this.nodes = [];
-    let nodeY = Math.floor((NUM.GRID_CELL_SIZE * 3 - 195) / 2) + 1;
-    for(let y = 0; y < this.nodesH; y++) {
-      let nodeX = Math.floor((NUM.GRID_CELL_SIZE * 3 - 211) / 2) + 1
-        + NUM.GRID_CELL_SIZE * 3;
-      for(let x = 0; x < this.nodesW; x++) {
-        if(nodeTypes[y][x] === 0) {
-          this.nodes.push(new CorruptNode(canv, nodeX, nodeY));
-        } else if(nodeTypes[y][x] === 1) {
-          this.nodes.push(new ComputeNode(canv, nodeX, nodeY));
-        } else if(nodeTypes[y][x] === 2) {
-          this.nodes.push(new StackMemNode(canv, nodeX, nodeY));
-        }
-        nodeX += NUM.GRID_CELL_SIZE * 3;
+    let extraX = Math.floor((NUM.GRID_CELL_SIZE * 3 - 211) / 2) + 1;
+    let extraY = Math.floor((NUM.GRID_CELL_SIZE * 3 - 195) / 2) + 1;
+    for(let nodeInfo of nodesInfo) {
+      let nodeX = nodeInfo[0] * NUM.GRID_CELL_SIZE + extraX;
+      let nodeY = nodeInfo[1] * NUM.GRID_CELL_SIZE + extraY;
+      if(nodeInfo[2] === 0) {
+        this.nodes.push(new CorruptNode(canv, nodeX, nodeY));
+      } else if(nodeInfo[2] === 1) {
+        this.nodes.push(new ComputeNode(canv, nodeX, nodeY));
+      } else if(nodeInfo[2] === 2) {
+        this.nodes.push(new StackMemNode(canv, nodeX, nodeY));
       }
-      nodeY += NUM.GRID_CELL_SIZE * 3;
     }
   }
 
@@ -92,9 +86,11 @@ export class NodeContainer {
 
   /** Gets pixel coordinates of node main text box text area top left corner */
   #nodeTopLeft(nodeI) {
-    let topLeftX = this.nodes[nodeI].mainTextBox.x + NUM.CHAR_GAP;
-    let topLeftY = this.nodes[nodeI].mainTextBox.y + 2 * NUM.CHAR_GAP
-      + this.nodes[nodeI].mainTextBox.offsetY - Math.floor(NUM.CHAR_GAP / 2);
+    let topLeftX = this.nodes[nodeI].mainTextBox.x + this.canv.grid.origin.x
+      + NUM.CHAR_GAP;
+    let topLeftY = this.nodes[nodeI].mainTextBox.y + this.canv.grid.origin.y
+      + 2 * NUM.CHAR_GAP + this.nodes[nodeI].mainTextBox.offsetY
+      - Math.floor(NUM.CHAR_GAP / 2);
     return [topLeftX, topLeftY];
   }
   /** Sets selection cursor from mouse position */
@@ -300,6 +296,15 @@ export class NodeContainer {
       }
     }
   }
+  toLineEdge(direction) {
+    if(this.select.nodeI === null) return;
+
+    if(direction === DIR.LEFT) {
+      this.cursor.charI = 0;
+    } else if(direction === DIR.RIGHT) {
+      this.cursor.charI = this.codeLines.strLen(this.cursor.lineI);
+    }
+  }
 
   attemptCopy() {
     if(this.select.nodeI === null) return null;
@@ -399,15 +404,22 @@ export class NodeContainer {
   }
 
   drawNodes() {
-    for(let x = 0.5; x < this.canv.canvas.width; x += NUM.GRID_CELL_SIZE) {
+    for(
+      let x = this.canv.grid.origin.x % NUM.GRID_CELL_SIZE + 0.5;
+      x < this.canv.canvas.width;
+      x += NUM.GRID_CELL_SIZE
+    ) {
       this.canv.ctx.moveTo(x, 0.5);
       this.canv.ctx.lineTo(x, this.canv.canvas.height + 0.5);
     }
-    for(let y = 0.5; y < this.canv.canvas.height; y += NUM.GRID_CELL_SIZE) {
+    for(
+      let y = this.canv.grid.origin.y % NUM.GRID_CELL_SIZE + 0.5;
+      y < this.canv.canvas.height;
+      y += NUM.GRID_CELL_SIZE
+    ) {
       this.canv.ctx.moveTo(0.5, y);
       this.canv.ctx.lineTo(this.canv.canvas.width + 0.5, y);
     }
-    this.canv.ctx.lineWidth = 1;
     this.canv.ctx.strokeStyle = COLOR.MID_GRAY;
     this.canv.ctx.stroke();
 
