@@ -20,18 +20,23 @@ export class Box {
     this.isBorderFull = isBorderFull;
   }
 
+  /** x-pos of box's top left corner on canvas (px) */
+  canvasX() { return this.x + this.canv.grid.origin.x; }
+  /** y-pos of box's top left corner on canvas (px) */
+  canvasY() { return this.y + this.canv.grid.origin.y; }
+
   drawBox(boxColor) {
     this.canv.ctx.strokeStyle = boxColor;
     if(!this.isBorderFull) {
       this.canv.ctx.strokeRect(
-        this.x + this.canv.grid.origin.x + 0.5,
-        this.y + this.canv.grid.origin.y + 0.5,
+        this.canvasX() + 0.5,
+        this.canvasY() + 0.5,
         this.w, this.h);
     } else {
       this.canv.ctx.lineWidth = 3;
       this.canv.ctx.strokeRect(
-        this.x + this.canv.grid.origin.x + 1.5,
-        this.y + this.canv.grid.origin.y + 1.5,
+        this.canvasX() + 1.5,
+        this.canvasY() + 1.5,
         this.w - 2, this.h - 2);
       this.canv.ctx.lineWidth = 1;
     }
@@ -82,10 +87,9 @@ export class BoxText extends Box {
     this.canv.ctx.fillStyle = textColor;
     this.canv.ctx.fillText(
       this.lines.strGet(lineI).substring(startChar, endChar),
-      this.x + this.canv.grid.origin.x + NUM.CHAR_GAP + offsetX
-      + startChar * NUM.CHAR_WIDTH + 1,
-      this.y + this.canv.grid.origin.y + NUM.CHAR_GAP
-      + (lineI + 1) * NUM.LINE_HEIGHT + this.offsetY + extraY + 1,
+      this.canvasX() + NUM.CHAR_GAP + offsetX + startChar * NUM.CHAR_WIDTH + 1,
+      this.canvasY() + NUM.CHAR_GAP + (lineI + 1) * NUM.LINE_HEIGHT
+      + this.offsetY + extraY + 1,
     );
   }
   /** Draws solid bar with height of font's line-height to canvas */
@@ -95,10 +99,10 @@ export class BoxText extends Box {
       offsetX = (NUM.CHAR_WIDTH / 2) * (this.boxCharW - (endChar - startChar));
     this.canv.ctx.fillStyle = barColor;
     this.canv.ctx.fillRect(
-      this.x + this.canv.grid.origin.x + NUM.CHAR_GAP + offsetX
-      + startChar * NUM.CHAR_WIDTH - extraStart + 1,
-      this.y + this.canv.grid.origin.y + lineI * NUM.LINE_HEIGHT
-      + 2 * NUM.CHAR_GAP - Math.floor(NUM.CHAR_GAP / 2) + this.offsetY + 1,
+      this.canvasX() + NUM.CHAR_GAP + offsetX + startChar * NUM.CHAR_WIDTH
+      - extraStart + 1,
+      this.canvasY() + lineI * NUM.LINE_HEIGHT + 2 * NUM.CHAR_GAP
+      - Math.floor(NUM.CHAR_GAP / 2) + this.offsetY + 1,
       (endChar - startChar) * NUM.CHAR_WIDTH + extraStart + extraEnd,
       NUM.LINE_HEIGHT,
     );

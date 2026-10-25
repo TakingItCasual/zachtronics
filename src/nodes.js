@@ -33,8 +33,8 @@ class _BaseNode {
   drawNode(select, color = COLOR.LIGHT_GRAY) {
     this.canv.ctx.fillStyle = COLOR.BLACK;
     this.canv.ctx.fillRect(
-      this.nodeBox.x + this.canv.grid.origin.x + 0.5,
-      this.nodeBox.y + this.canv.grid.origin.y + 0.5,
+      this.nodeBox.canvasX() + 0.5,
+      this.nodeBox.canvasY() + 0.5,
       this.nodeBox.w,
       this.nodeBox.h,
     );

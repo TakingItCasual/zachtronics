@@ -4,11 +4,12 @@ import { NUM, DIR, COLOR, ALLOWED_CHARS } from "./consts.js";
 import { EditorSelection } from "./editor_selection.js";
 import { StringList } from "./string_list.js";
 import { CorruptNode, ComputeNode, StackMemNode } from "./nodes.js";
+import { Wires } from "./wires.js";
 import { numWithin } from "./utils.js";
 
 /** Handles nodes and keyboard/mouse activity */
 export class NodeContainer {
-  constructor(canv, nodesInfo) {
+  constructor(canv, nodesInfo, wireGridInfo) {
     this.canv = canv;
 
     this.select = new EditorSelection();
@@ -24,13 +25,15 @@ export class NodeContainer {
       let nodeX = nodeInfo[0] * NUM.GRID_CELL_SIZE + extraX;
       let nodeY = nodeInfo[1] * NUM.GRID_CELL_SIZE + extraY;
       if(nodeInfo[2] === 0) {
-        this.nodes.push(new CorruptNode(canv, nodeX, nodeY));
+        this.nodes.push(new CorruptNode(this.canv, nodeX, nodeY));
       } else if(nodeInfo[2] === 1) {
-        this.nodes.push(new ComputeNode(canv, nodeX, nodeY));
+        this.nodes.push(new ComputeNode(this.canv, nodeX, nodeY));
       } else if(nodeInfo[2] === 2) {
-        this.nodes.push(new StackMemNode(canv, nodeX, nodeY));
+        this.nodes.push(new StackMemNode(this.canv, nodeX, nodeY));
       }
     }
+
+    this.wires = new Wires(this.canv, wireGridInfo.v, wireGridInfo.h);
   }
 
   /** Mouse movement while left mouse button held down */
@@ -86,11 +89,9 @@ export class NodeContainer {
 
   /** Gets pixel coordinates of node main text box text area top left corner */
   #nodeTopLeft(nodeI) {
-    let topLeftX = this.nodes[nodeI].mainTextBox.x + this.canv.grid.origin.x
-      + NUM.CHAR_GAP;
-    let topLeftY = this.nodes[nodeI].mainTextBox.y + this.canv.grid.origin.y
-      + 2 * NUM.CHAR_GAP + this.nodes[nodeI].mainTextBox.offsetY
-      - Math.floor(NUM.CHAR_GAP / 2);
+    let topLeftX = this.nodes[nodeI].mainTextBox.canvasX() + NUM.CHAR_GAP;
+    let topLeftY = this.nodes[nodeI].mainTextBox.canvasY() + 2 * NUM.CHAR_GAP
+      + this.nodes[nodeI].mainTextBox.offsetY - Math.floor(NUM.CHAR_GAP / 2);
     return [topLeftX, topLeftY];
   }
   /** Sets selection cursor from mouse position */
@@ -404,6 +405,7 @@ export class NodeContainer {
   }
 
   drawNodes() {
+    this.canv.ctx.beginPath();
     for(
       let x = this.canv.grid.origin.x % NUM.GRID_CELL_SIZE + 0.5;
       x < this.canv.canvas.width;
@@ -422,6 +424,8 @@ export class NodeContainer {
     }
     this.canv.ctx.strokeStyle = COLOR.MID_GRAY;
     this.canv.ctx.stroke();
+
+    this.wires.drawWires();
 
     for(let i = 0; i < this.nodes.length; i++) {
       this.nodes[i].drawNode(this.select.nodeI === i ? this.select : null);

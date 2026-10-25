@@ -7,8 +7,7 @@ import { NodeContainer } from "./node_container.js";
 (function() {
   let canv = new Canvas();
 
-  let nodeManager = new NodeContainer(
-    canv,
+  let nodeManager = new NodeContainer(canv,
     [
       [-6, -3, 1],
       [-3, -3, 1],
@@ -19,8 +18,21 @@ import { NodeContainer } from "./node_container.js";
       [0, 0, 1],
       [3, 0, 2],
     ],
+    {
+      v: [
+        [-7, 0],
+        [-3, -2],
+        [0, -2],
+        [0, 1],
+        [3, 1],
+      ],
+      h: [
+        [-7, 0],
+        [-2, 0],
+        [1, 0],
+      ],
+    },
   );
-
   for(let i = 0; i < NUM.NODE_HEIGHT - 1; i++)
     nodeManager.nodes[0].mainTextBox.lines.strSet(i, "TESTING " + i);
   nodeManager.nodes[0].mainTextBox.lines
@@ -64,6 +76,10 @@ import { NodeContainer } from "./node_container.js";
     }
   });
 
+  canv.canvas.addEventListener("blur", function() {
+    nodeManager.select.focusLost();
+  });
+
   canv.canvas.addEventListener("keydown", function(evt) {
     // Prevent space and arrow keys from causing unwanted scrolling
     // Prevent backspace causing the browser to navigate backwards
@@ -76,49 +92,61 @@ import { NodeContainer } from "./node_container.js";
       evt.preventDefault();
     }
 
-    if(nodeManager.select.nodeI === null) return;
-
-    if(!evt.ctrlKey) {
+    if(nodeManager.select.nodeI !== null) {
+      if(!evt.ctrlKey) {
+        switch(evt.key) {
+          case "Enter":
+            nodeManager.newLine();
+            break;
+          case "Backspace":
+            nodeManager.bakChar();
+            break;
+          case "Delete":
+            nodeManager.delChar();
+            break;
+          case "ArrowLeft":
+            nodeManager.arrowKey(DIR.LEFT);
+            break;
+          case "ArrowUp":
+            nodeManager.arrowKey(DIR.UP);
+            break;
+          case "ArrowRight":
+            nodeManager.arrowKey(DIR.RIGHT);
+            break;
+          case "ArrowDown":
+            nodeManager.arrowKey(DIR.DOWN);
+            break;
+          case "Home":
+            nodeManager.toLineEdge(DIR.LEFT);
+            break;
+          case "End":
+            nodeManager.toLineEdge(DIR.RIGHT);
+            break;
+          case "Escape":
+            nodeManager.select.focusLost();
+            break;
+          default:
+            nodeManager.addChar(evt.key);
+        }
+      } else if(evt.key.toUpperCase() === "A") {
+        nodeManager.selectAll();
+      }
+    } else {
       switch(evt.key) {
-        case "Enter":
-          nodeManager.newLine();
-          break;
-        case "Backspace":
-          nodeManager.bakChar();
-          break;
-        case "Delete":
-          nodeManager.delChar();
-          break;
         case "ArrowLeft":
-          nodeManager.arrowKey(DIR.LEFT);
+          canv.grid.origin.x -= NUM.GRID_CELL_SIZE;
           break;
         case "ArrowUp":
-          nodeManager.arrowKey(DIR.UP);
+          canv.grid.origin.y -= NUM.GRID_CELL_SIZE;
           break;
         case "ArrowRight":
-          nodeManager.arrowKey(DIR.RIGHT);
+          canv.grid.origin.x += NUM.GRID_CELL_SIZE;
           break;
         case "ArrowDown":
-          nodeManager.arrowKey(DIR.DOWN);
+          canv.grid.origin.y += NUM.GRID_CELL_SIZE;
           break;
-        case "Home":
-          nodeManager.toLineEdge(DIR.LEFT);
-          break;
-        case "End":
-          nodeManager.toLineEdge(DIR.RIGHT);
-          break;
-        case "Escape":
-          nodeManager.select.focusLost();
-          break;
-        default:
-          nodeManager.addChar(evt.key);
       }
-    } else if(evt.key.toUpperCase() === "A") {
-      nodeManager.selectAll();
     }
-  });
-  canv.canvas.addEventListener("blur", function() {
-    nodeManager.select.focusLost();
   });
 
   // Handle copying/cutting/pasting for code boxes
@@ -153,14 +181,11 @@ import { NodeContainer } from "./node_container.js";
   });
 
   function gameLoop() {
-    canv.ctx.beginPath();
-
     canv.ctx.fillStyle = COLOR.BLACK;
     canv.ctx.fillRect(0, 0, canv.canvas.width, canv.canvas.height);
 
     nodeManager.drawNodes();
 
-    canv.ctx.closePath();
     window.requestAnimationFrame(gameLoop);
   }
   window.requestAnimationFrame(gameLoop);
