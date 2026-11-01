@@ -33,6 +33,7 @@ import { NodeContainer } from "./node_container.js";
       ],
     },
   );
+
   for(let i = 0; i < NUM.NODE_HEIGHT - 1; i++)
     nodeManager.nodes[0].mainTextBox.lines.strSet(i, "TESTING " + i);
   nodeManager.nodes[0].mainTextBox.lines
