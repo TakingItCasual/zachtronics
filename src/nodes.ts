@@ -1,17 +1,28 @@
 "use strict";
 
-import { NUM, COLOR } from "./consts.js";
 import { Box, BoxText, BoxCode } from "./boxes.js";
+import { Canvas } from "./canvas.js";
+import { NUM, COLOR } from "./consts.js";
+import { EditorSelection } from "./editor_selection.js";
 
 /** Template parent class for all node types */
 class _BaseNode {
+  canv: Canvas;
+  mainTextBox: BoxText;
+  nodeBox: Box;
+
   _sideWidthPx = NUM.NODE_WIDTH_SIDE * NUM.CHAR_WIDTH + NUM.CHAR_GAP * 2;
 
   constructor({
-    canv, nodeType, x, y, isMainTextCentered, isBorderFull = false,
+    canv, x, y, isMainTextCentered = false, isBorderFull = false,
+  }: {
+    canv: Canvas,
+    x: number,
+    y: number,
+    isMainTextCentered?: boolean,
+    isBorderFull?: boolean,
   }) {
     this.canv = canv;
-    this.nodeType = nodeType;
     this.mainTextBox = new BoxText({
       canv: canv,
       x: x + 2,
@@ -30,7 +41,7 @@ class _BaseNode {
     });
   }
 
-  drawNode(select, color = COLOR.LIGHT_GRAY) {
+  drawNode(select: EditorSelection | null, color: string = COLOR.LIGHT_GRAY) {
     this.canv.ctx.fillStyle = COLOR.BLACK;
     this.canv.ctx.fillRect(
       this.nodeBox.canvasX() + 0.5,
@@ -44,10 +55,13 @@ class _BaseNode {
 
 /** Red "Communication Error" node (no functionality) */
 export class CorruptNode extends _BaseNode {
-  constructor(canv, x, y) {
+  sideBox1: Box;
+  sideBox2: Box;
+  sideBox3: Box;
+
+  constructor(canv: Canvas, x: number, y: number) {
     super({
       canv: canv,
-      nodeType: 0,
       x: x,
       y: y,
       isMainTextCentered: true,
@@ -58,7 +72,7 @@ export class CorruptNode extends _BaseNode {
     this.mainTextBox.lines.strSet(5, "FAILURE");
 
     const remainder = (this.mainTextBox.h - 2) % 4;
-    function expandCalc(boxNum, y_pos) {
+    function expandCalc(boxNum: number, y_pos: boolean) {
       if(remainder === 0) return 0;
       if(boxNum === 1) {
         if(remainder === 3) return 2;
@@ -106,7 +120,7 @@ export class CorruptNode extends _BaseNode {
     });
   }
 
-  drawNode(select) {
+  drawNode(select: EditorSelection | null) {
     super.drawNode(select, COLOR.CORRUPT_RED);
 
     this.mainTextBox.drawBox(COLOR.CORRUPT_RED);
@@ -123,10 +137,21 @@ export class CorruptNode extends _BaseNode {
 
 /** Node within which user can write code */
 export class ComputeNode extends _BaseNode {
-  constructor(canv, x, y) {
+  codeBox: BoxCode;
+  accBox: BoxText;
+  ACC: number;
+  bakBox: BoxText;
+  BAK: number;
+  lastBox: BoxText;
+  LAST: number | null;
+  modeBox: BoxText;
+  MODE: string;
+  idleBox: BoxText;
+  IDLE: number;
+
+  constructor(canv: Canvas, x: number, y: number) {
     super({
       canv: canv,
-      nodeType: 1,
       x: x,
       y: y,
     });
@@ -146,7 +171,7 @@ export class ComputeNode extends _BaseNode {
     const expand = Math.max(0,
       this.codeBox.h
       - info_boxes * (2 * NUM.LINE_HEIGHT + NUM.CHAR_GAP * 3 + 1) - 8);
-    function expandCalc(boxNum) {
+    function expandCalc(boxNum: number) {
       if(expand === 0) return 0;
       boxNum *= 2;
       let total =
@@ -222,7 +247,7 @@ export class ComputeNode extends _BaseNode {
     this.idleBox.lines.strSet(0, "IDLE");
   }
 
-  drawNode(select) {
+  drawNode(select: EditorSelection | null) {
     super.drawNode(select);
 
     // Draws the editable codeBox and all relevant bars
@@ -275,10 +300,11 @@ export class ComputeNode extends _BaseNode {
 
 /** Node which stores retrievable values given to it */
 export class StackMemNode extends _BaseNode {
-  constructor(canv, x, y) {
+  memoryBox: BoxText;
+
+  constructor(canv: Canvas, x: number, y: number) {
     super({
       canv: canv,
-      nodeType: 2,
       x: x,
       y: y,
       isMainTextCentered: true,
@@ -296,7 +322,7 @@ export class StackMemNode extends _BaseNode {
     });
   }
 
-  drawNode(select) {
+  drawNode(select: EditorSelection | null) {
     super.drawNode(select);
 
     // Draws the description box ("STACK MEMORY NODE")

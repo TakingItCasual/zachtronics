@@ -1,13 +1,29 @@
 "use strict";
 
+import { Canvas } from "./canvas.js";
 import { NUM, COLOR } from "./consts.js";
+import { EditorSelection } from "./editor_selection.js";
 import { StringList } from "./string_list.js";
 import { numWithin } from "./utils.js";
 
 /** Empty box, just has its dimensions and draw method */
 export class Box {
-  constructor({canv, x, y, w, h, isBorderFull = false}) {
-    this.canv = canv,
+  canv: Canvas;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  isBorderFull: boolean;
+
+  constructor({ canv, x, y, w, h, isBorderFull = false }: {
+    canv: Canvas,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    isBorderFull?: boolean,
+  }) {
+    this.canv = canv;
     /** x-pos of box's top left corner in relation to grid origin (px) */
     this.x = x;
     /** y-pos of box's top left corner in relation to grid origin (px) */
@@ -21,11 +37,11 @@ export class Box {
   }
 
   /** x-pos of box's top left corner on canvas (px) */
-  canvasX() { return this.x + this.canv.grid.origin.x; }
+  canvasX(): number { return this.x + this.canv.grid.origin.x; }
   /** y-pos of box's top left corner on canvas (px) */
-  canvasY() { return this.y + this.canv.grid.origin.y; }
+  canvasY(): number { return this.y + this.canv.grid.origin.y; }
 
-  drawBox(boxColor) {
+  drawBox(boxColor: string): void {
     this.canv.ctx.strokeStyle = boxColor;
     if(!this.isBorderFull) {
       this.canv.ctx.strokeRect(
@@ -45,6 +61,12 @@ export class Box {
 
 /** Can draw text and bars, dimensions set relative to font dimensions */
 export class BoxText extends Box {
+  boxCharW: number;
+  boxCharH: number;
+  offsetY: number;
+  isTextCentered: boolean;
+  lines: StringList;
+
   constructor({
     canv,
     x,
@@ -55,6 +77,16 @@ export class BoxText extends Box {
     isTextCentered = false,
     isBorderFull = false,
     isEditable = false,
+  }: {
+    canv: Canvas,
+    x: number,
+    y: number,
+    boxCharW: number,
+    boxCharH: number,
+    extraH?: number,
+    isTextCentered?: boolean,
+    isBorderFull?: boolean,
+    isEditable?: boolean,
   }) {
     super({
       canv: canv,
@@ -78,7 +110,13 @@ export class BoxText extends Box {
   }
 
   /** Draws single string from string list to canvas */
-  drawStr(textColor, lineI, extraY = 0, startChar = 0, endChar = -1) {
+  drawStr(
+    textColor: string,
+    lineI: number,
+    extraY: number = 0,
+    startChar: number = 0,
+    endChar: number = -1,
+  ) {
     if(endChar === -1) endChar = this.lines.strLen(lineI);
     let offsetX = 0;
     if(this.isTextCentered)
@@ -93,7 +131,14 @@ export class BoxText extends Box {
     );
   }
   /** Draws solid bar with height of font's line-height to canvas */
-  drawBar(barColor, lineI, startChar, endChar, extraStart = 0, extraEnd = 0) {
+  drawBar(
+    barColor: string,
+    lineI: number,
+    startChar: number,
+    endChar: number,
+    extraStart: number = 0,
+    extraEnd: number = 0,
+  ) {
     let offsetX = 0;
     if(this.isTextCentered)
       offsetX = (NUM.CHAR_WIDTH / 2) * (this.boxCharW - (endChar - startChar));
@@ -111,7 +156,12 @@ export class BoxText extends Box {
 
 /** Can divide a line into different colors for comments and selection */
 export class BoxCode extends BoxText {
-  constructor({canv, x, y, boxCharW, boxCharH}) {
+  activeLine: number | null;
+  executable: boolean;
+
+  constructor({ canv, x, y, boxCharW, boxCharH }: {
+    canv: Canvas, x: number, y: number, boxCharW: number, boxCharH: number,
+  }) {
     super({
       canv: canv,
       x: x,
@@ -127,7 +177,7 @@ export class BoxCode extends BoxText {
   }
 
   /** Draws text, executing line or selected text bars, and cursor */
-  drawAllLinesAndBars(select) {
+  drawAllLinesAndBars(select: EditorSelection | null) {
     for(let i = 0; i < this.boxCharH; i++) {
       let selectStart = -1;
       let selectEnd = -1;
@@ -150,7 +200,7 @@ export class BoxCode extends BoxText {
             this.drawBar(COLOR.BAR.SELECTED, i, 0, 0, NUM.CHAR_GAP - 1);
           }
         }
-        if(select.cursor.lineI === i && select.cursorBlink.isActive()) {
+        if(select.cursor.lineI === i && select.cursor.isBlinkActive()) {
           cursorPos = select.cursor.charI;
           // Draws blinking thingy
           this.drawBar(COLOR.BAR.CURSOR,
@@ -159,7 +209,7 @@ export class BoxCode extends BoxText {
       }
 
       if(!this.lines.strGet(i)) continue; // String is empty
-      let commentStart = this.lines.strGet(i).indexOf("#");
+      const commentStart = this.lines.strGet(i).indexOf("#");
       if(this.activeLine === i) {
         // Draws bar under currently executing line
         this.drawBar(
@@ -175,8 +225,15 @@ export class BoxCode extends BoxText {
     }
   }
   /** Draws text line, using seperate coloring for comments/selection/cursor */
-  drawSplitLine(lineI, commentStart, selectStart, selectEnd, cursorPos) {
-    let strParts = []; // List of lists of string indexes and colors
+  drawSplitLine(
+    lineI: number,
+    commentStart: number,
+    selectStart: number,
+    selectEnd: number,
+    cursorPos: number,
+  ) {
+    /** Indexes and colors within string */
+    const strParts: [number, string][] = [];
 
     if(commentStart !== 0 && selectStart !== 0)
       strParts.push([0, COLOR.LIGHT_GRAY]);
@@ -205,14 +262,15 @@ export class BoxCode extends BoxText {
         strParts.push([commentStart, COLOR.TEXT.COMMENT]);
       }
     }
-    strParts.push([this.lines.strLen(lineI), null]);
+    // Number needed for comparison under next if block, color unused
+    strParts.push([this.lines.strLen(lineI), COLOR.WHITE]);
 
     if(cursorPos > -1) {
       for(let i = 0; i < strParts.length - 1; i++) {
         if(cursorPos >= strParts[i + 1][0]) continue;
 
-        let prevColor = strParts[i][1];
-        let hitAdjust = cursorPos === strParts[i][0] ? 1 : 0;
+        const prevColor = strParts[i][1];
+        const hitAdjust = cursorPos === strParts[i][0] ? 1 : 0;
         strParts.splice(i + 1 - hitAdjust, hitAdjust, [cursorPos, COLOR.BLACK]);
         strParts.splice(i + 2 - hitAdjust, 0, [cursorPos + 1, prevColor]);
         break;

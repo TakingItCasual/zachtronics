@@ -29,15 +29,15 @@ export const NUM = Object.freeze({
   CURSOR_PERIOD: 800,
   /** Width/height of node grid cells (px) */
   GRID_CELL_SIZE: 80,
-});
+} as const);
 
 /** Enum for directions */
-export const DIR = Object.freeze({
-  LEFT: Symbol("LEFT"),
-  UP: Symbol("UP"),
-  RIGHT: Symbol("RIGHT"),
-  DOWN: Symbol("DOWN"),
-});
+export enum DIR {
+  LEFT,
+  UP,
+  RIGHT,
+  DOWN,
+};
 
 /** Hex codes for various colors */
 export const COLOR = Object.freeze({
@@ -68,7 +68,7 @@ export const COLOR = Object.freeze({
     /** Used under newest stack memory node entry */
     MEM_RED: "#4A0A0A",
   }),
-});
+} as const);
 
 /** Regex of printable ASCII characters (lowercase letters excepted) */
 export const ALLOWED_CHARS = Object.freeze(/^[\x20-\x60\x7B-\x7E]*$/);

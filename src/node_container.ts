@@ -1,15 +1,37 @@
 "use strict";
 
+import { Canvas } from "./canvas.js";
 import { NUM, DIR, COLOR, ALLOWED_CHARS } from "./consts.js";
 import { EditorSelection } from "./editor_selection.js";
-import { StringList } from "./string_list.js";
 import { CorruptNode, ComputeNode, StackMemNode } from "./nodes.js";
-import { Wires } from "./wires.js";
+import { StringList } from "./string_list.js";
 import { numWithin } from "./utils.js";
+import { Wires } from "./wires.js";
+
+type tNodesInfo = [number, number, number][];
+interface iWireGridInfo {
+  v: [number, number][];
+  h: [number, number][];
+}
+interface iMPos {
+  x: number;
+  y: number;
+}
 
 /** Handles nodes and keyboard/mouse activity */
 export class NodeContainer {
-  constructor(canv, nodesInfo, wireGridInfo) {
+  canv: Canvas;
+  select: EditorSelection;
+  codeLines: StringList | null;
+  cursor: { lineI: number, charI: number };
+  nodes: (CorruptNode | ComputeNode | StackMemNode)[];
+  wires: Wires;
+
+  constructor(
+    canv: Canvas,
+    nodesInfo: tNodesInfo,
+    wireGridInfo: iWireGridInfo,
+  ) {
     this.canv = canv;
 
     this.select = new EditorSelection();
@@ -19,11 +41,11 @@ export class NodeContainer {
     this.cursor = this.select.cursor;
 
     this.nodes = [];
-    let extraX = Math.floor((NUM.GRID_CELL_SIZE * 3 - 211) / 2) + 1;
-    let extraY = Math.floor((NUM.GRID_CELL_SIZE * 3 - 195) / 2) + 1;
-    for(let nodeInfo of nodesInfo) {
-      let nodeX = nodeInfo[0] * NUM.GRID_CELL_SIZE + extraX;
-      let nodeY = nodeInfo[1] * NUM.GRID_CELL_SIZE + extraY;
+    const extraX = Math.floor((NUM.GRID_CELL_SIZE * 3 - 211) / 2) + 1;
+    const extraY = Math.floor((NUM.GRID_CELL_SIZE * 3 - 195) / 2) + 1;
+    for(const nodeInfo of nodesInfo) {
+      const nodeX = nodeInfo[0] * NUM.GRID_CELL_SIZE + extraX;
+      const nodeY = nodeInfo[1] * NUM.GRID_CELL_SIZE + extraY;
       if(nodeInfo[2] === 0) {
         this.nodes.push(new CorruptNode(this.canv, nodeX, nodeY));
       } else if(nodeInfo[2] === 1) {
@@ -37,17 +59,17 @@ export class NodeContainer {
   }
 
   /** Mouse movement while left mouse button held down */
-  lmbDrag(mPos) {
+  lmbDrag(mPos: iMPos): void {
     if(this.select.nodeI === null) return;
 
     this.#cursorToMouse(this.select.nodeI, mPos);
     this.select.range.current.lineI = this.cursor.lineI;
     this.select.range.current.charI = this.cursor.charI;
-    this.select.cursorBlink.reset();
+    this.select.cursor.blinkReset();
   }
   /** Left mouse button pressed down */
-  lmbDown(mPos) {
-    let _nodeI = this.#getMousedOverNodeI(mPos);
+  lmbDown(mPos: iMPos): void {
+    const _nodeI = this.#getMousedOverNodeI(mPos);
     this.select.nodeI = this.codeLines = null;
     if(_nodeI === -1) {
       this.select.focusLost();
@@ -59,11 +81,11 @@ export class NodeContainer {
 
     this.#cursorToMouse(_nodeI, mPos);
     this.select.range.initTo(this.cursor.lineI, this.cursor.charI);
-    this.select.cursorBlink.reset();
+    this.select.cursor.blinkReset();
   }
   /** Right mouse button pressed down */
-  async rmbDown(mPos) {
-    let _nodeI = this.#getMousedOverNodeI(mPos);
+  async rmbDown(mPos: iMPos) {
+    const _nodeI = this.#getMousedOverNodeI(mPos);
     if(_nodeI === -1 || _nodeI !== this.select.nodeI) {
       this.select.focusLost();
       return;
@@ -77,7 +99,7 @@ export class NodeContainer {
           console.error("Failed to read clipboard contents: ", err);
         });
     } else {
-      let cutStr = this.attemptCut();
+      const cutStr = this.attemptCut();
       if(cutStr === null) return;
       navigator.clipboard.writeText(cutStr)
         .catch(err => {
@@ -88,17 +110,15 @@ export class NodeContainer {
   }
 
   /** Gets pixel coordinates of node main text box text area top left corner */
-  #nodeTopLeft(nodeI) {
-    let topLeftX = this.nodes[nodeI].mainTextBox.canvasX() + NUM.CHAR_GAP;
-    let topLeftY = this.nodes[nodeI].mainTextBox.canvasY() + 2 * NUM.CHAR_GAP
+  #nodeTopLeft(nodeI: number): [number, number] {
+    const topLeftX = this.nodes[nodeI].mainTextBox.canvasX() + NUM.CHAR_GAP;
+    const topLeftY = this.nodes[nodeI].mainTextBox.canvasY() + 2 * NUM.CHAR_GAP
       + this.nodes[nodeI].mainTextBox.offsetY - Math.floor(NUM.CHAR_GAP / 2);
     return [topLeftX, topLeftY];
   }
   /** Sets selection cursor from mouse position */
-  #cursorToMouse(nodeI, mPos) {
-    let topLeftX;
-    let topLeftY;
-    [topLeftX, topLeftY] = this.#nodeTopLeft(nodeI);
+  #cursorToMouse(nodeI: number, mPos: iMPos): void {
+    const [topLeftX, topLeftY] = this.#nodeTopLeft(nodeI);
     this.cursor.lineI = Math.max(0, Math.min(
       this.nodes[nodeI].mainTextBox.lines.lineCount() - 1,
       Math.floor((mPos.y - topLeftY) / NUM.LINE_HEIGHT)));
@@ -107,19 +127,21 @@ export class NodeContainer {
       Math.floor((mPos.x - topLeftX) / NUM.CHAR_WIDTH)));
   }
   /** Gets index of moused-over codeBox (-1 if N/A or for executing node) */
-  #getMousedOverNodeI(mPos) {
-    let topLeftX;
-    let topLeftY;
+  #getMousedOverNodeI(mPos: iMPos): number {
+    let topLeftX: number;
+    let topLeftY: number;
     for(let i = 0; i < this.nodes.length; i++) {
+      // Type narrowing for array doesn't work without temporary variable
+      const nodeTemp = this.nodes[i];
       // codeBox only exists within ComputeNodes
-      if(this.nodes[i].nodeType !== 1) continue;
+      if(!(nodeTemp instanceof ComputeNode)) continue;
       // Can't edit text in executing codeBox
-      if(this.nodes[i].codeBox.activeLine !== null) continue;
+      if(nodeTemp.codeBox.activeLine !== null) continue;
 
-      let codeBox = this.nodes[i].codeBox;
+      const codeBox = nodeTemp.codeBox;
       [topLeftX, topLeftY] = this.#nodeTopLeft(i);
-      let bottomRightX = topLeftX + codeBox.boxCharW * NUM.CHAR_WIDTH;
-      let bottomRightY = topLeftY + codeBox.boxCharH * NUM.LINE_HEIGHT;
+      const bottomRightX = topLeftX + codeBox.boxCharW * NUM.CHAR_WIDTH;
+      const bottomRightY = topLeftY + codeBox.boxCharH * NUM.LINE_HEIGHT;
       if(
         numWithin(mPos.x, topLeftX, true, bottomRightX, false) &&
         numWithin(mPos.y, topLeftY, true, bottomRightY, false)
@@ -130,32 +152,33 @@ export class NodeContainer {
     return -1;
   }
 
-  addChar(char) {
-    if(this.select.nodeI === null) return;
+  addChar(char: string): void {
+    if(this.codeLines === null) return;
     if(char.length !== 1) return;
 
-    let _char = char.toUpperCase();
+    const _char = char.toUpperCase();
     if(!ALLOWED_CHARS.test(_char)) return;
 
     if(!this.select.range.isNull) {
-      let afterDel = this.#delSelectionInfo(this.codeLines);
+      const afterDel = this.#delSelectionInfo(this.codeLines);
       if(afterDel === null) return;
       if(afterDel.lowerLineLen >= this.codeLines.lineW) return;
 
       this.delSelection(this.codeLines);
-    } else if(this.codeLines.strLen(this.cursor.lineI) >=
-        this.codeLines.lineW) {
+    } else if(
+      this.codeLines.strLen(this.cursor.lineI) >= this.codeLines.lineW
+    ) {
       return;
     }
 
     this.codeLines.charAdd(this.cursor.lineI, this.cursor.charI, _char);
     this.cursor.charI += 1;
   }
-  newLine() {
-    if(this.select.nodeI === null) return;
+  newLine(): void {
+    if(this.codeLines === null) return;
 
     if(!this.select.range.isNull) {
-      let afterDel = this.#delSelectionInfo(this.codeLines);
+      const afterDel = this.#delSelectionInfo(this.codeLines);
 
       if(afterDel === null) return;
       if(afterDel.lineCount >= this.codeLines.maxLines) return;
@@ -165,7 +188,7 @@ export class NodeContainer {
       return;
     }
 
-    let distToEndOfLine =
+    const distToEndOfLine =
       this.codeLines.strLen(this.cursor.lineI) - this.cursor.charI;
 
     this.codeLines.lineAdd(this.cursor.lineI);
@@ -173,13 +196,13 @@ export class NodeContainer {
     this.cursor.charI = 0;
 
     if(distToEndOfLine > 0) {
-      let strToMove = this.codeLines
+      const strToMove = this.codeLines
         .strCut(this.cursor.lineI - 1, distToEndOfLine);
       this.codeLines.strSet(this.cursor.lineI, strToMove);
     }
   }
-  bakChar() {
-    if(this.select.nodeI === null) return;
+  bakChar(): void {
+    if(this.codeLines === null) return;
 
     if(!this.select.range.isNull) {
       this.delSelection(this.codeLines);
@@ -195,7 +218,7 @@ export class NodeContainer {
         this.cursor.lineI -= 1;
         this.cursor.charI = this.codeLines.strLen(this.cursor.lineI);
 
-        let combinedStr =
+        const combinedStr =
           this.codeLines.strGet(this.cursor.lineI) +
           this.codeLines.strGet(this.cursor.lineI + 1);
         this.codeLines.strSet(this.cursor.lineI, combinedStr);
@@ -204,8 +227,8 @@ export class NodeContainer {
       }
     }
   }
-  delChar() {
-    if(this.select.nodeI === null) return;
+  delChar(): void {
+    if(this.codeLines === null) return;
 
     if(!this.select.range.isNull) {
       this.delSelection(this.codeLines);
@@ -217,7 +240,7 @@ export class NodeContainer {
         this.codeLines.strLen(this.cursor.lineI + 1) <=
         this.codeLines.lineW
       ) {
-        let combinedStr =
+        const combinedStr =
           this.codeLines.strGet(this.cursor.lineI) +
           this.codeLines.strGet(this.cursor.lineI + 1);
         this.codeLines.strSet(this.cursor.lineI, combinedStr);
@@ -226,10 +249,10 @@ export class NodeContainer {
       }
     }
   }
-  delSelection(strListObj) {
+  delSelection(strListObj: StringList): void {
     if(this.#delSelectionInfo(strListObj) === null) return;
 
-    let combinedStr =
+    const combinedStr =
       strListObj.strGet(this.select.range.lowerLineI)
         .substring(0, this.select.range.lowerCharI) +
       strListObj.strGet(this.select.range.upperLineI)
@@ -244,16 +267,16 @@ export class NodeContainer {
     this.cursor.charI = this.select.range.lowerCharI;
     this.select.range.initTo(this.cursor.lineI, this.cursor.charI);
   }
-  #delSelectionInfo(strListObj) {
+  #delSelectionInfo(strListObj: StringList) {
     if(this.select.range.isNull) return null;
 
-    let newLowerLineLen =
+    const newLowerLineLen =
       this.select.range.lowerCharI +
       strListObj.strLen(this.select.range.upperLineI) -
       this.select.range.upperCharI;
     if(newLowerLineLen > strListObj.lineW) return null;
 
-    let newLineCount = strListObj.lineCount() -
+    const newLineCount = strListObj.lineCount() -
       this.select.range.upperLineI + this.select.range.lowerLineI;
     return {
       lowerLineLen: newLowerLineLen,
@@ -261,8 +284,8 @@ export class NodeContainer {
     };
   }
 
-  arrowKey(direction) {
-    if(this.select.nodeI === null) return;
+  arrowKey(direction: DIR): void {
+    if(this.codeLines === null) return;
 
     this.select.range.initTo(0, 0);
     if(direction === DIR.LEFT) {
@@ -297,8 +320,8 @@ export class NodeContainer {
       }
     }
   }
-  toLineEdge(direction) {
-    if(this.select.nodeI === null) return;
+  toLineEdge(direction: DIR): void {
+    if(this.codeLines === null) return;
 
     if(direction === DIR.LEFT) {
       this.cursor.charI = 0;
@@ -307,8 +330,8 @@ export class NodeContainer {
     }
   }
 
-  attemptCopy() {
-    if(this.select.nodeI === null) return null;
+  attemptCopy(): string | null {
+    if(this.codeLines === null) return null;
     if(this.select.range.lineCount === 0) return null;
 
     if(this.select.range.lineCount === 1) {
@@ -316,7 +339,7 @@ export class NodeContainer {
         .substring(this.select.range.lowerCharI, this.select.range.upperCharI);
     }
 
-    let strParts = [this.codeLines.strGet(this.select.range.lowerLineI)
+    const strParts = [this.codeLines.strGet(this.select.range.lowerLineI)
       .substring(this.select.range.lowerCharI)];
     for(let i = 1; i < this.select.range.lineCount - 1; i++) {
       strParts.push(this.codeLines.strGet(this.select.range.lowerLineI + i));
@@ -326,28 +349,30 @@ export class NodeContainer {
 
     return strParts.join("\n");
   }
-  attemptCut() {
-    let savedSelection = this.attemptCopy();
+  attemptCut(): string | null {
+    if(this.codeLines === null) return null;
+
+    const savedSelection = this.attemptCopy();
     if(savedSelection === null) return null;
     if(this.#delSelectionInfo(this.codeLines) === null) return null;
 
     this.delSelection(this.codeLines);
     return savedSelection;
   }
-  attemptPaste(clipboardStr) {
-    if(this.select.nodeI === null) return;
+  attemptPaste(clipboardStr: string | null): void {
+    if(this.codeLines === null) return;
     if(!clipboardStr) return;
     if(typeof clipboardStr !== "string") return;
 
-    let pastedLines = clipboardStr.split(/\r?\n/);
+    const pastedLines = clipboardStr.split(/\r?\n/);
     for(let i = 0; i < pastedLines.length - 1; i++) {
       pastedLines[i] = pastedLines[i].toUpperCase();
       if(!ALLOWED_CHARS.test(pastedLines[i])) return;
     }
 
     let newCursorLineI = pastedLines.length - 1; // Appended to later
-    let newCursorCharI;
-    let tempLines = StringList.constructCopy(this.codeLines);
+    let newCursorCharI = 0;
+    const tempLines = StringList.constructCopy(this.codeLines);
     if(this.select.range.isNull) {
       pastedLines[0] = tempLines.strGet(this.cursor.lineI)
         .substring(0, this.cursor.charI) + pastedLines[0];
@@ -358,7 +383,7 @@ export class NodeContainer {
       pastedLines[pastedLines.length - 1] += tempLines
         .strGet(this.cursor.lineI).substring(this.cursor.charI);
     } else {
-      let afterDel = this.#delSelectionInfo(tempLines);
+      const afterDel = this.#delSelectionInfo(tempLines);
       if(afterDel === null) return;
 
       pastedLines[0] = tempLines.strGet(this.select.range.lowerLineI)
@@ -394,8 +419,8 @@ export class NodeContainer {
     this.cursor.lineI = newCursorLineI;
     this.cursor.charI = newCursorCharI;
   }
-  selectAll() {
-    if(this.select.nodeI === null) return;
+  selectAll(): void {
+    if(this.codeLines === null) return;
 
     this.select.range.start.lineI = this.select.range.start.charI = 0;
     this.cursor.lineI = this.select.range.current.lineI =
@@ -404,7 +429,7 @@ export class NodeContainer {
       this.codeLines.strLen(this.cursor.lineI);
   }
 
-  drawNodes() {
+  drawNodes(): void {
     this.canv.ctx.beginPath();
     for(
       let x = this.canv.grid.origin.x % NUM.GRID_CELL_SIZE + 0.5;

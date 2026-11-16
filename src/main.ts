@@ -1,13 +1,14 @@
 "use strict";
 
-import { NUM, DIR, COLOR } from "./consts.js";
 import { Canvas } from "./canvas.js";
+import { NUM, DIR, COLOR } from "./consts.js";
 import { NodeContainer } from "./node_container.js";
+import { ComputeNode, StackMemNode } from "./nodes.js";
 
 (function() {
-  let canv = new Canvas();
+  const canv = new Canvas();
 
-  let nodeManager = new NodeContainer(canv,
+  const nodeManager = new NodeContainer(canv,
     [
       [-6, -3, 1],
       [-3, -3, 1],
@@ -39,24 +40,30 @@ import { NodeContainer } from "./node_container.js";
   nodeManager.nodes[0].mainTextBox.lines
     .strSet(NUM.NODE_HEIGHT - 1, "MOV R#GHT RIGHT");
 
-  nodeManager.nodes[1].mainTextBox.lines.strSet(0, "THE QUICK BROWN");
-  nodeManager.nodes[1].mainTextBox.lines.strSet(1, "FOX JUMPS OVER THE");
-  nodeManager.nodes[1].mainTextBox.lines.strSet(2, "LAZY DOG.");
-  nodeManager.nodes[1].mainTextBox.lines.strSet(3, "1234567890");
-  nodeManager.nodes[1].mainTextBox.lines.strSet(4, "!\"#$%&'()*+,-./:;");
-  nodeManager.nodes[1].mainTextBox.lines.strSet(5, "<=>?@[\\]_`{|}~");
-  nodeManager.nodes[1].codeBox.activeLine = 0;
-  nodeManager.nodes[1].BAK = NUM.ACC_MIN;
+  const codeNode = nodeManager.nodes[1];
+  if(codeNode instanceof ComputeNode) {
+    codeNode.codeBox.lines.strSet(0, "THE QUICK BROWN");
+    codeNode.codeBox.lines.strSet(1, "FOX JUMPS OVER THE");
+    codeNode.codeBox.lines.strSet(2, "LAZY DOG.");
+    codeNode.codeBox.lines.strSet(3, "1234567890");
+    codeNode.codeBox.lines.strSet(4, "!\"#$%&'()*+,-./:;");
+    codeNode.codeBox.lines.strSet(5, "<=>?@[\\]_`{|}~");
+    codeNode.codeBox.activeLine = 0;
+    codeNode.BAK = NUM.ACC_MIN;
+  }
 
-  nodeManager.nodes[2].memoryBox.lines.strSet(0, "254");
-  nodeManager.nodes[2].memoryBox.lines.strSet(1, "498");
-  nodeManager.nodes[2].memoryBox.lines.strSet(2, "782");
+  const memNode = nodeManager.nodes[2];
+  if(memNode instanceof StackMemNode) {
+    memNode.memoryBox.lines.strSet(0, "254");
+    memNode.memoryBox.lines.strSet(1, "498");
+    memNode.memoryBox.lines.strSet(2, "782");
+  }
 
   // Source: https://stackoverflow.com/a/17130415
-  function getMousePos(evt) {
-    let rect = canv.canvas.getBoundingClientRect();
-    let scaleX = canv.canvas.width / rect.width / canv.canvasScale;
-    let scaleY = canv.canvas.height / rect.height / canv.canvasScale;
+  function getMousePos(evt: MouseEvent) {
+    const rect = canv.canvas.getBoundingClientRect();
+    const scaleX = canv.canvas.width / rect.width / canv.canvasScale;
+    const scaleY = canv.canvas.height / rect.height / canv.canvasScale;
 
     return {
       x: Math.floor((evt.clientX - rect.left) * scaleX),
@@ -64,12 +71,12 @@ import { NodeContainer } from "./node_container.js";
     };
   }
 
-  canv.canvas.addEventListener("mousemove", function(evt) {
-    let mPos = getMousePos(evt);
+  canv.canvas.addEventListener("mousemove", function(evt: MouseEvent) {
+    const mPos = getMousePos(evt);
     if(evt.buttons % 2 === 1) nodeManager.lmbDrag(mPos);
   });
-  canv.canvas.addEventListener("mousedown", async function(evt) {
-    let mPos = getMousePos(evt);
+  canv.canvas.addEventListener("mousedown", async function(evt: MouseEvent) {
+    const mPos = getMousePos(evt);
     if(evt.button === 0) {
       nodeManager.lmbDown(mPos);
     } else if(evt.button === 2) {
@@ -81,7 +88,7 @@ import { NodeContainer } from "./node_container.js";
     nodeManager.select.focusLost();
   });
 
-  canv.canvas.addEventListener("keydown", function(evt) {
+  canv.canvas.addEventListener("keydown", function(evt: KeyboardEvent) {
     // Prevent space and arrow keys from causing unwanted scrolling
     // Prevent backspace causing the browser to navigate backwards
     // Prevent ' and / from opening quick find in Firefox
@@ -151,33 +158,36 @@ import { NodeContainer } from "./node_container.js";
   });
 
   // Handle copying/cutting/pasting for code boxes
-  window.addEventListener("copy", function(evt) {
-    let copiedStr = nodeManager.attemptCopy();
+  window.addEventListener("copy", function(evt: ClipboardEvent) {
+    evt.preventDefault();
+    if(evt.clipboardData === null) return;
+
+    const copiedStr = nodeManager.attemptCopy();
     if(copiedStr !== null)
       evt.clipboardData.setData("text/plain", copiedStr);
-
-    evt.preventDefault();
   });
-  window.addEventListener("cut", function(evt) {
-    let cutStr = nodeManager.attemptCut();
+  window.addEventListener("cut", function(evt: ClipboardEvent) {
+    evt.preventDefault();
+    if(evt.clipboardData === null) return;
+
+    const cutStr = nodeManager.attemptCut();
     if(cutStr !== null)
       evt.clipboardData.setData("text/plain", cutStr);
-
-    evt.preventDefault();
   });
-  window.addEventListener("paste", function(evt) {
+  window.addEventListener("paste", function(evt: ClipboardEvent) {
     evt.preventDefault();
     evt.stopPropagation();
+    if(evt.clipboardData === null) return;
 
-    let pastedStr = evt.clipboardData.getData("text/plain");
+    const pastedStr = evt.clipboardData.getData("text/plain");
     nodeManager.attemptPaste(pastedStr);
   });
 
   // Disable unwanted behaviors in canvas
-  canv.canvas.addEventListener("contextmenu", function(evt) {
+  canv.canvas.addEventListener("contextmenu", function(evt: MouseEvent) {
     evt.preventDefault();
   });
-  canv.canvas.addEventListener("dragstart", function(evt) {
+  canv.canvas.addEventListener("dragstart", function(evt: DragEvent) {
     evt.preventDefault();
   });
 
